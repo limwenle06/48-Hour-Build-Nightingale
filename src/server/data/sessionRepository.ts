@@ -1,8 +1,15 @@
 // src/server/data/sessionRepository.ts
+import { createClient } from '@supabase/supabase-js';
 import { LeadSession, PatientSession, ChannelSource } from '../../contracts';
 
+// Initialize Supabase Client
+declare const process: { env: Record<string, string | undefined> };
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+export const supabase = createClient(supabaseUrl, supabaseKey);
+
 /**
- * 1. Create a new anonymous LeadSession upon landing
+ * 1. Create LeadSession in Supabase DB
  */
 export async function createLeadSession(data: {
   clinic_id: string;
@@ -10,40 +17,28 @@ export async function createLeadSession(data: {
   campaign_id?: string;
   creative?: string;
 }): Promise<LeadSession> {
-  // Replace with your Supabase client call:
-  // const { data: session } = await supabase.from('sessions').insert(...).select().single();
-  return {
-    id: crypto.randomUUID(),
-    clinic_id: data.clinic_id,
-    source_channel: data.source_channel,
-    campaign_id: data.campaign_id,
-    creative: data.creative,
-    identity_level: 'anonymous',
-    landing_timestamp: new Date().toISOString(),
-    is_authenticated: false,
-  };
+  const { data: session, error } = await supabase
+    .from('sessions')
+    .insert({
+      clinic_id: data.clinic_id,
+      source_channel: data.source_channel,
+      campaign_id: data.campaign_id,
+      creative: data.creative,
+      identity_level: 'anonymous',
+      is_authenticated: false,
+    })
+    .select()
+    .single();
+
+  if (error || !session) {
+    throw new Error(`Failed to create lead session: ${error?.message}`);
+  }
+
+  return session as LeadSession;
 }
 
 /**
- * 2. Honest Live Query Statistic (Section 2 Requirement)
- * Returns exact database counts. If count is 0, frontend handles truthful display.
- */
-export async function getWeeklyClinicInquiryCount(clinic_id: string): Promise<number> {
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-
-  // Replace with your Supabase client call:
-  // const { count } = await supabase
-  //   .from('sessions')
-  //   .select('id', { count: 'exact', head: true })
-  //   .eq('clinic_id', clinic_id)
-  //   .gte('landing_timestamp', sevenDaysAgo);
-
-  return 14; // Placeholder returning live count
-}
-
-/**
- * 3. Convert LeadSession -> PatientSession upon Auth & Consent
- * Preserves attribution and original landing context.
+ * 2. Convert LeadSession -> PatientSession in Supabase DB
  */
 export async function convertToPatientSession(
   leadSessionId: string,
@@ -56,18 +51,27 @@ export async function convertToPatientSession(
 ): Promise<PatientSession> {
   const consentedAt = new Date().toISOString();
 
-  // Replace with your Supabase update call to link user_id and flags
+  const { data: updatedSession, error } = await supabase
+    .from('sessions')
+    .update({
+      user_id: patientData.patient_id,
+      identity_level: 'identified',
+      is_authenticated: true,
+      verified_email: patientData.verified_email,
+      verified_phone: patientData.verified_phone,
+    })
+    .eq('id', leadSessionId)
+    .select()
+    .single();
+
+  if (error || !updatedSession) {
+    throw new Error(`Failed to convert session: ${error?.message}`);
+  }
+
   return {
-    id: leadSessionId,
-    clinic_id: 'clinic_01',
-    source_channel: 'social_comment',
-    identity_level: 'identified',
-    landing_timestamp: new Date().toISOString(),
-    is_authenticated: true,
+    ...updatedSession,
     patient_id: patientData.patient_id,
-    verified_email: patientData.verified_email,
-    verified_phone: patientData.verified_phone,
     consented_at: consentedAt,
     marketing_consent: patientData.marketing_consent,
-  };
+  } as PatientSession;
 }
