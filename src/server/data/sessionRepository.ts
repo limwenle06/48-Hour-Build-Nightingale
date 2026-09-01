@@ -1,5 +1,5 @@
 // src/server/data/sessionRepository.ts
-import { LeadSession, PatientSession, ChannelSource } from '@/contracts';
+import { LeadSession, PatientSession, ChannelSource } from '../../contracts';
 
 /**
  * 1. Create a new anonymous LeadSession upon landing
