@@ -13,6 +13,20 @@ export const riskProvenanceSchema = z.enum([
 ]);
 export type RiskProvenance = z.infer<typeof riskProvenanceSchema>;
 
+export const riskAssessmentContextSchema = z.object({
+  patient_id: uuidSchema,
+  patient_session_id: uuidSchema,
+  message_id: uuidSchema,
+});
+export type RiskAssessmentContext = z.infer<
+  typeof riskAssessmentContextSchema
+>;
+
+export const riskAssessmentInputSchema = riskAssessmentContextSchema.extend({
+  redacted_text: z.string().trim().min(1).max(20_000),
+});
+export type RiskAssessmentInput = z.infer<typeof riskAssessmentInputSchema>;
+
 const riskDecisionObjectSchema = z.object({
   patient_id: uuidSchema,
   patient_session_id: uuidSchema,
