@@ -1,0 +1,5 @@
+NIGHTINGALE ATTRIBUTION
+
+Will update as libraries, models, datasets, media, and external sources are added.
+
+No implementation dependencies or external assets have been added at scaffold creation time.
