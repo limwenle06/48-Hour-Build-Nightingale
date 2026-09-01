@@ -11,6 +11,7 @@ test-results/
 .env.local
 .env.*.local
 *.log
+*.tsbuildinfo
 .DS_Store
 Thumbs.db
 
