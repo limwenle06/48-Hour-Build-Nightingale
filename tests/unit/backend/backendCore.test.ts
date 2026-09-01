@@ -1,5 +1,5 @@
 // tests/unit/backend/backendCore.test.ts
-import { describe, it, expect } from '@jest/globals';; // or 'jest' depending on setup
+import { describe, it, expect } from 'vitest'; // or 'jest' depending on setup
 import { createLeadSession, convertToPatientSession } from '../../../src/server/data/sessionRepository';
 import { getOpeningStrategy } from '../../../src/server/services/channelRules';
 import { logAuditEvent } from '../../../src/server/audit/auditLogger';
