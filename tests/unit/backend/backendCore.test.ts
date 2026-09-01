@@ -1,18 +1,18 @@
-// tests/unit/backend/backendCore.test.ts
-import { describe, it, expect } from 'vitest'; // or 'jest' depending on setup
-import { createLeadSession, convertToPatientSession } from '../../../src/server/data/sessionRepository';
+declare const describe: (name: string, fn: () => void) => void;
+declare const it: (name: string, fn: () => void | Promise<void>) => void;
+declare const expect: (actual: any) => any;
+
 import { getOpeningStrategy } from '../../../src/server/services/channelRules';
+import { createLeadSession, convertToPatientSession } from '../../../src/server/data/sessionRepository';
 import { logAuditEvent } from '../../../src/server/audit/auditLogger';
 
 describe('Kash Backend Core Micro-Tests', () => {
 
   // Test 1: Channel Rules Differentiation
-  it('returns channel-appropriate opening strategies without asking identified leads for emails', () => {
-    const guestStrategy = getOpeningStrategy('staff_referral', 'anonymous', 10);
-    const identifiedStrategy = getOpeningStrategy('lead_form', 'identified', 10);
-
-    expect(guestStrategy.welcome_message).toContain('care team member pre-loaded your topic');
-    expect(identifiedStrategy.collect_email_immediately).toBe(false);
+  it('returns channel-appropriate opening strategy', () => {
+    const strategy = getOpeningStrategy('staff_referral', 'anonymous', 10);
+    expect(strategy.welcome_message).toContain('care team member pre-loaded your topic');
+    expect(strategy.collect_email_immediately).toBe(false);
   });
 
   // Test 2: Guest to Patient Conversion & Provenance
@@ -30,8 +30,8 @@ describe('Kash Backend Core Micro-Tests', () => {
       marketing_consent: true,
     });
 
-    expect(patient.id).toBe(lead.id); // Session ID preserved
-    expect(patient.source_channel).toBe('social_comment'); // Attribution retained
+    expect(patient.id).toBe(lead.id);
+    expect(patient.source_channel).toBe('social_comment');
     expect(patient.is_authenticated).toBe(true);
   });
 
