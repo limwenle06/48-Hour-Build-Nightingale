@@ -3,3 +3,14 @@ NIGHTINGALE ATTRIBUTION
 Will update as libraries, models, datasets, media, and external sources are added.
 
 No implementation dependencies or external assets have been added at scaffold creation time.
+
+CURRENT IMPLEMENTATION DEPENDENCIES
+
+- OpenAI JavaScript/TypeScript SDK (`openai`), Apache-2.0 license.
+  Used for the server-side provider adapter. No OpenAI code or key is exposed to the browser.
+- Zod (`zod`), MIT license.
+  Used for runtime validation and shared data schemas.
+- TypeScript (`typescript`), Apache-2.0 license.
+  Used for static type checking.
+- Vitest (`vitest`), MIT license.
+  Used for automated tests.
