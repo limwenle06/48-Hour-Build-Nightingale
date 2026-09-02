@@ -5,9 +5,9 @@
   "description": "Nightingale healthcare challenge prototype. Implementation will be added incrementally.",
   "scripts": {
     "dev": "next dev",
+    "build": "next build",
     "start": "next start",
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "lint": "next lint"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
