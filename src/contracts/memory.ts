@@ -43,6 +43,30 @@ export const memoryMutationProposalSchema = z.object({
 });
 export type MemoryMutationProposal = z.infer<typeof memoryMutationProposalSchema>;
 
+export const memoryExtractionCandidateSchema = z.object({
+  type: memoryTypeSchema,
+  value: z.string().trim().min(1).max(1_000),
+  status: memoryStatusSchema,
+  confidence: confidenceSchema,
+});
+export type MemoryExtractionCandidate = z.infer<
+  typeof memoryExtractionCandidateSchema
+>;
+
+export const memoryExtractionBatchSchema = z.object({
+  facts: z.array(memoryExtractionCandidateSchema).max(50),
+});
+export type MemoryExtractionBatch = z.infer<
+  typeof memoryExtractionBatchSchema
+>;
+
+export const memoryMutationInputSchema = z.object({
+  message_id: uuidSchema,
+  current_profile: z.array(profileSnapshotItemSchema).max(500),
+  candidates: z.array(memoryExtractionCandidateSchema).max(50),
+});
+export type MemoryMutationInput = z.infer<typeof memoryMutationInputSchema>;
+
 export const memoryItemSchema = memoryMutationProposalSchema.extend({
   memory_item_id: uuidSchema,
   patient_id: uuidSchema,
