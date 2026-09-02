@@ -6,10 +6,14 @@
   "scripts": {},
   "devDependencies": {
     "@types/jest": "^30.0.0",
-    "@types/node": "^26.4.0",
+    "@types/node": "^26.4.1",
+    "prisma": "^8.0.0-rc.12",
     "vitest": "^4.1.11"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.112.4"
+    "@prisma/client": "^7.10.0",
+    "@supabase/supabase-js": "^2.112.4",
+    "next": "^16.3.4",
+    "zod": "^4.5.4"
   }
 }
