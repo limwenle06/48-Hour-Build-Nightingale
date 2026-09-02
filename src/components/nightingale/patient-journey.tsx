@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "./api-client";
@@ -22,33 +23,48 @@ import {
 } from "./ui";
 
 type HandoffState = "idle" | "sending" | "success" | "failed";
-
 export function PatientJourney() {
-  const params = useSearchParams();
-  const patientSessionId =
-    params.get("patient_session_id") || "patient_session_demo";
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [profile, setProfile] = useState<MemoryItem[]>([]);
-  const [citations, setCitations] = useState<Citation[]>([]);
-  const [risk, setRisk] = useState<RiskAssessment | null>(null);
-  const [processing, setProcessing] = useState<ProcessingStatus>("success");
-  const [handoffAvailable, setHandoffAvailable] = useState(false);
-  const [handoff, setHandoff] = useState<HandoffState>("idle");
-  const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [source, setSource] = useState<string | null>(null);
+  const params = useSearchParams(),
+    patientSessionId =
+      params.get("patient_session_id") || "patient_session_demo";
+  const [messages, setMessages] = useState<Message[]>([]),
+    [profile, setProfile] = useState<MemoryItem[]>([]),
+    [citations, setCitations] = useState<Citation[]>([]),
+    [risk, setRisk] = useState<RiskAssessment | null>(null),
+    [latchedRisk, setLatchedRisk] = useState<RiskAssessment | null>(null),
+    [processing, setProcessing] = useState<ProcessingStatus>("success"),
+    [handoffAvailable, setHandoffAvailable] = useState(false),
+    [handoff, setHandoff] = useState<HandoffState>("idle"),
+    [text, setText] = useState(""),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState<string | null>(null),
+    [dismissOpen, setDismissOpen] = useState(false),
+    [dismissedRiskId, setDismissedRiskId] = useState<string | null>(null),
+    [authenticated, setAuthenticated] = useState(!api.mockMode);
 
   useEffect(() => {
     if (api.mockMode) {
       const recovered = api.getMockJourney();
       setMessages([...recovered.guest_messages, ...recovered.patient_messages]);
-      setSource(recovered.attribution?.source_channel || null);
+      setAuthenticated(recovered.authenticated);
+      setLatchedRisk(recovered.emergency_latch);
+      setHandoffAvailable(Boolean(recovered.emergency_latch));
     }
     api
       .getProfile()
       .then((result) => setProfile(result.items))
       .catch((cause) => setError(cause.message));
+  }, []);
+  useEffect(() => {
+    const reset = () => {
+      setMessages([]);
+      setProfile([]);
+      setRisk(null);
+      setLatchedRisk(null);
+      setAuthenticated(false);
+    };
+    window.addEventListener("nightingale-demo-reset", reset);
+    return () => window.removeEventListener("nightingale-demo-reset", reset);
   }, []);
 
   async function send(event: FormEvent) {
@@ -57,7 +73,6 @@ export function PatientJourney() {
     const content = text.trim();
     setText("");
     setBusy(true);
-    setHandoff("idle");
     setError(null);
     try {
       const result = await api.sendPatient(patientSessionId, content);
@@ -67,8 +82,13 @@ export function PatientJourney() {
         ...(result.assistant_message ? [result.assistant_message] : []),
       ]);
       setRisk(result.risk_assessment);
+      if (result.risk_assessment.risk_level === "high") {
+        setDismissedRiskId(null);
+        setLatchedRisk(result.risk_assessment);
+        setHandoffAvailable(result.send_to_clinic_available);
+      } else if (!latchedRisk)
+        setHandoffAvailable(result.send_to_clinic_available);
       setProcessing(result.processing_status);
-      setHandoffAvailable(result.send_to_clinic_available);
       setCitations(result.citations);
       if (result.profile_changes.length)
         setProfile((await api.getProfile()).items);
@@ -83,16 +103,16 @@ export function PatientJourney() {
       setBusy(false);
     }
   }
-
   async function escalate() {
-    if (!risk || !handoffAvailable) return;
+    const trigger = latchedRisk || risk;
+    if (!trigger || !handoffAvailable) return;
     setHandoff("sending");
     setError(null);
     try {
       await api.createEscalation(
         patientSessionId,
-        risk.message_id,
-        risk.risk_assessment_id,
+        trigger.message_id,
+        trigger.risk_assessment_id,
       );
       setHandoff("success");
     } catch (cause) {
@@ -104,7 +124,44 @@ export function PatientJourney() {
       );
     }
   }
+  function dismissEmergency() {
+    if (handoff === "success") {
+      setDismissedRiskId((latchedRisk || risk)?.risk_assessment_id || null);
+      setLatchedRisk(null);
+      api.clearEmergencyLatch();
+    } else setDismissOpen(true);
+  }
+  function confirmDismiss() {
+    setDismissOpen(false);
+    setDismissedRiskId((latchedRisk || risk)?.risk_assessment_id || null);
+    setLatchedRisk(null);
+    api.clearEmergencyLatch();
+  }
 
+  if (api.mockMode && !authenticated)
+    return (
+      <section className="mx-auto max-w-xl rounded-3xl border border-line bg-white p-8 text-center shadow-soft">
+        <p className="text-xs font-extrabold uppercase tracking-widest text-teal">
+          Demo session ended
+        </p>
+        <h1 className="mt-2 text-3xl font-bold">Your chat is closed.</h1>
+        <p className="mt-3 text-slate-600">
+          Start again when you’re ready. Old demo messages will not appear.
+        </p>
+        <Link
+          href="/start?source_channel=website_widget&source_platform=website"
+          className="mt-6 inline-block rounded-xl bg-teal px-5 py-3 font-bold text-white"
+        >
+          Ask a question
+        </Link>
+      </section>
+    );
+  const currentRisk = latchedRisk || risk;
+  const displayRisk =
+    currentRisk?.risk_level === "high" &&
+    currentRisk.risk_assessment_id === dismissedRiskId
+      ? null
+      : currentRisk;
   return (
     <>
       <JourneySteps active="secure" />
@@ -112,32 +169,38 @@ export function PatientJourney() {
         <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-soft">
           <div className="border-b border-line px-5 py-4">
             <span className="block text-xs text-slate-500">
-              Private · clinic sharing allowed
-              {source ? ` · from ${source.replaceAll("_", " ")}` : ""}
+              Private chat · shared with your chosen clinic
             </span>
             <strong>Nightingale AI</strong>
           </div>
           {api.mockMode && (
             <details className="border-b border-line bg-sky-50 px-4 py-3 text-sm">
               <summary className="cursor-pointer font-bold">
-                Synthetic UI scenarios
+                Developer demo tools
               </summary>
               <p className="my-2 text-xs text-slate-600">
-                Demo fixtures only. They do not classify risk or extract health
-                facts.
+                Exact synthetic fixtures display contracted states. They do not
+                classify risk or extract health facts.
               </p>
               <div className="flex flex-wrap gap-2">
-                {syntheticPatientScenarios.map((scenario) => (
+                {syntheticPatientScenarios.map((s) => (
                   <button
                     type="button"
-                    key={scenario.label}
-                    onClick={() => setText(scenario.input)}
+                    key={s.label}
+                    onClick={() => setText(s.input)}
                     className="rounded-full border border-sky-300 bg-white px-3 py-1 text-xs font-semibold"
                   >
-                    {scenario.label}
+                    {s.label}
                   </button>
                 ))}
               </div>
+              <button
+                type="button"
+                onClick={() => api.resetDemoData()}
+                className="mt-3 text-xs font-bold text-red-700 underline"
+              >
+                Reset demo data
+              </button>
             </details>
           )}
           <ChatThread
@@ -147,29 +210,32 @@ export function PatientJourney() {
                 <strong className="mb-1 block text-xs text-teal">
                   Nightingale AI
                 </strong>
-                You’re in your secure chat. What would you like the clinic to
-                understand?
+                You can use short words or full sentences. What should the
+                clinic understand?
               </div>
             }
           />
           {processing === "failed" && <ProcessingFallback />}
-          {risk && risk.risk_level !== "low" && (
+          {displayRisk && displayRisk.risk_level !== "low" && (
             <SafetyAction
-              risk={risk.risk_level}
-              onSend={escalate}
+              risk={displayRisk.risk_level}
+              onSend={handoff === "success" ? undefined : escalate}
               loading={handoff === "sending"}
               available={handoffAvailable}
+              onDismiss={
+                displayRisk.risk_level === "high" ? dismissEmergency : undefined
+              }
             />
           )}
           {handoff === "success" && (
             <div
               role="status"
-              className="m-3 rounded-xl bg-mint p-4 font-semibold"
+              className={`m-3 rounded-xl border p-4 font-semibold ${displayRisk?.risk_level === "high" ? "border-red-400 bg-red-50 text-red-900" : "border-amber-400 bg-amber-50 text-amber-950"}`}
             >
               {api.mockMode
                 ? "Demo clinic alert recorded. No real delivery occurred."
                 : "Sent to Nurse/Clinic."}
-              {risk?.risk_level === "high" &&
+              {displayRisk?.risk_level === "high" &&
                 " Do not wait for a clinic reply — call 999 now."}
             </div>
           )}
@@ -190,9 +256,9 @@ export function PatientJourney() {
             <input
               id="patient-message"
               value={text}
-              onChange={(event) => setText(event.target.value)}
+              onChange={(e) => setText(e.target.value)}
               className="focus-ring min-w-0 flex-1 rounded-xl border border-line px-4 py-3"
-              placeholder="What’s on your mind?"
+              placeholder="A few words is enough"
             />
             <button
               disabled={busy}
@@ -205,6 +271,37 @@ export function PatientJourney() {
         </div>
         <LivingProfile items={profile} />
       </section>
+      {dismissOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="dismiss-title"
+          className="fixed inset-0 z-50 grid place-items-center bg-ink/70 p-4"
+        >
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6">
+            <h2 id="dismiss-title" className="text-xl font-bold">
+              Close this emergency warning?
+            </h2>
+            <p className="mt-2 text-slate-600">
+              We still recommend getting urgent help now.
+            </p>
+            <div className="mt-5 grid gap-2">
+              <button
+                onClick={() => setDismissOpen(false)}
+                className="rounded-xl bg-red-700 px-4 py-3 font-bold text-white"
+              >
+                Keep warning
+              </button>
+              <button
+                onClick={confirmDismiss}
+                className="rounded-xl border border-line px-4 py-3 font-semibold"
+              >
+                Close warning
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

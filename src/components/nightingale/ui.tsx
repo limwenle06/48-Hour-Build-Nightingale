@@ -5,11 +5,7 @@ import type {
   RiskLevel,
 } from "./frontend-types";
 
-export function JourneySteps({
-  active,
-}: {
-  active: "ask" | "secure" | "clinic";
-}) {
+export function JourneySteps({ active }: { active: "ask" | "secure" }) {
   return (
     <nav
       aria-label="Care journey"
@@ -18,7 +14,6 @@ export function JourneySteps({
       {[
         ["ask", "Ask"],
         ["secure", "Continue securely"],
-        ["clinic", "Clinic"],
       ].map(([key, label]) => (
         <span
           key={key}
@@ -75,11 +70,13 @@ export function SafetyAction({
   onSend,
   loading,
   available = true,
+  onDismiss,
 }: {
   risk: RiskLevel;
   onSend?: () => void;
   loading?: boolean;
   available?: boolean;
+  onDismiss?: () => void;
 }) {
   if (risk === "high")
     return (
@@ -90,6 +87,16 @@ export function SafetyAction({
         <span className="text-xs font-black tracking-widest">
           EMERGENCY · HIGH RISK
         </span>
+        {onDismiss && (
+          <button
+            type="button"
+            aria-label="Close emergency warning"
+            onClick={onDismiss}
+            className="float-right rounded-lg px-2 py-1 text-sm font-bold underline"
+          >
+            Close
+          </button>
+        )}
         <h2 className="mt-1 text-2xl font-black">Call 999 now</h2>
         <p className="my-2 font-semibold">
           Nightingale is not emergency services. Do not wait for Nightingale or
@@ -131,7 +138,7 @@ export function SafetyAction({
           <button
             disabled={loading || !available}
             onClick={onSend}
-            className="focus-ring rounded-xl bg-teal px-4 py-2 font-bold text-white disabled:opacity-50"
+            className="focus-ring rounded-xl bg-amber-700 px-5 py-3 font-bold text-white shadow-sm disabled:opacity-50"
           >
             {loading ? "Sending…" : "Send to Nurse/Clinic"}
           </button>
@@ -145,11 +152,11 @@ export function LivingProfile({ items }: { items: MemoryItem[] }) {
   return (
     <aside className="min-w-0 rounded-2xl border border-line bg-white p-5 shadow-soft">
       <p className="text-xs font-extrabold uppercase tracking-widest text-teal">
-        Living Profile
+        What I’ll remember
       </p>
-      <h2 className="mt-1 text-xl font-bold">What we’ve heard</h2>
+      <h2 className="mt-1 text-xl font-bold">So you don’t repeat yourself</h2>
       <p className="mt-1 text-sm text-slate-500">
-        Only contract-provided notes appear here.
+        Notes shared with your clinic appear here.
       </p>
       <div className="mt-4">
         {items.length ? (
@@ -159,12 +166,20 @@ export function LivingProfile({ items }: { items: MemoryItem[] }) {
               key={item.memory_item_id}
             >
               <span className="text-[10px] font-bold uppercase tracking-wider text-teal">
-                {item.type.replaceAll("_", " ")}
+                {profileLabel(item.type)}
               </span>
               <strong className="block break-words">{item.value}</strong>
-              <span className="block break-all text-[11px] text-slate-500">
-                {item.status} · source {item.provenance_pointer}
+              <span className="block text-[11px] capitalize text-slate-500">
+                {item.status}
               </span>
+              <details className="mt-1 text-[11px] text-slate-500">
+                <summary className="cursor-pointer">
+                  Where this came from
+                </summary>
+                <span className="block break-all">
+                  Message {item.provenance_pointer}
+                </span>
+              </details>
               {item.supersedes_memory_item_id && (
                 <span className="block break-all text-[11px] text-slate-400">
                   Current item · replaces {item.supersedes_memory_item_id}
@@ -180,6 +195,18 @@ export function LivingProfile({ items }: { items: MemoryItem[] }) {
       </div>
     </aside>
   );
+}
+
+function profileLabel(type: MemoryItem["type"]) {
+  return (
+    {
+      chief_complaint: "Main concern",
+      symptom: "What you feel",
+      symptom_timeline: "When it started",
+      medication: "Medicine",
+      allergy: "Allergy",
+    } as const
+  )[type];
 }
 
 export function ProcessingFallback() {

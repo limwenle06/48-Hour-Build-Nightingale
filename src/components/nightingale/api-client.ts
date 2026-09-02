@@ -11,10 +11,12 @@ import type {
   SourceChannel,
   SourcePlatform,
   WarmLead,
+  FunnelMetric,
 } from "./frontend-types";
 
 const MOCK = process.env.NEXT_PUBLIC_NIGHTINGALE_MOCK !== "false";
 const STORAGE_KEY = "nightingale_frontend_demo";
+const GUEST_VIEW_KEY = "nightingale_active_guest_view";
 const envelope = z.object({ data: z.unknown(), request_id: z.string() });
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
@@ -70,6 +72,10 @@ interface MockState {
   attribution: MockAttribution | null;
   converted: boolean;
   handoff_behavior: "success" | "failure" | "unavailable";
+  authenticated: boolean;
+  emergency_latch: RiskAssessment | null;
+  escalations: Escalation[];
+  referral_topic: string | null;
 }
 const defaultState = (): MockState => ({
   lead_session_id: null,
@@ -82,6 +88,10 @@ const defaultState = (): MockState => ({
   attribution: null,
   converted: false,
   handoff_behavior: "success",
+  authenticated: false,
+  emergency_latch: null,
+  escalations: [],
+  referral_topic: null,
 });
 function getState(): MockState {
   if (typeof window === "undefined") return defaultState();
@@ -215,7 +225,9 @@ export const api = {
     }
     const state = getState();
     state.converted = true;
+    state.authenticated = true;
     setState(state);
+    window.sessionStorage.removeItem(GUEST_VIEW_KEY);
     return {
       patient: { patient_id: state.patient_id },
       patient_session: { patient_session_id: state.patient_session_id },
@@ -227,13 +239,47 @@ export const api = {
   },
   getMockJourney() {
     if (!MOCK)
-      return { guest_messages: [], patient_messages: [], attribution: null };
+      return {
+        guest_messages: [],
+        patient_messages: [],
+        attribution: null,
+        authenticated: false,
+        emergency_latch: null,
+        referral_topic: null,
+      };
     const state = getState();
     return {
       guest_messages: state.guest_messages,
       patient_messages: state.patient_messages,
       attribution: state.attribution,
+      authenticated: state.authenticated,
+      emergency_latch: state.emergency_latch,
+      referral_topic: state.referral_topic,
     };
+  },
+  openMockGuestView() {
+    if (!MOCK || typeof window === "undefined") return [] as Message[];
+    const state = getState();
+    const saved = window.sessionStorage.getItem(GUEST_VIEW_KEY);
+    if (saved) {
+      try {
+        const view = JSON.parse(saved) as {
+          lead_session_id: string | null;
+          offset: number;
+        };
+        if (view.lead_session_id === state.lead_session_id)
+          return state.guest_messages.slice(view.offset);
+      } catch {
+        window.sessionStorage.removeItem(GUEST_VIEW_KEY);
+      }
+    }
+    const offset =
+      state.authenticated || state.converted ? state.guest_messages.length : 0;
+    window.sessionStorage.setItem(
+      GUEST_VIEW_KEY,
+      JSON.stringify({ lead_session_id: state.lead_session_id, offset }),
+    );
+    return state.guest_messages.slice(offset);
   },
   async sendPatient(
     patient_session_id: string,
@@ -282,6 +328,7 @@ export const api = {
     if (changes.length) state.profile = changes;
     state.patient_messages.push(patient, ...(assistant ? [assistant] : []));
     state.last_risk = risk;
+    if (risk.risk_level === "high") state.emergency_latch = risk;
     setState(state);
     return {
       patient_message: patient,
@@ -321,29 +368,64 @@ export const api = {
     const current = getState();
     if (current.handoff_behavior === "failure")
       throw new Error("Demo handoff was not recorded. Please try again.");
-    const risk = current.last_risk;
-    return {
-      escalation: {
-        escalation_id: id("escalation"),
+    const risk =
+      current.emergency_latch?.message_id === trigger_message_id
+        ? current.emergency_latch
+        : current.last_risk;
+    const trigger = [
+      ...current.patient_messages,
+      ...current.guest_messages,
+    ].find((item) => item.message_id === trigger_message_id);
+    const escalation: Escalation = {
+      escalation_id: id("escalation"),
+      clinic_id: "clinic_demo",
+      patient_id: "patient_demo",
+      patient_session_id,
+      trigger_message_id,
+      risk_assessment_id,
+      triage_summary: [
+        trigger?.content || "Synthetic concern submitted for review",
+      ],
+      profile_snapshot: current.profile.map(
+        ({ memory_item_id, type, value, status, provenance_pointer }) => ({
+          memory_item_id,
+          type,
+          value,
+          status,
+          provenance_pointer,
+        }),
+      ),
+      provenance: [trigger_message_id],
+      attribution: {
         clinic_id: "clinic_demo",
-        patient_id: "patient_demo",
-        patient_session_id,
-        trigger_message_id,
-        risk_assessment_id,
-        triage_summary: ["Synthetic demo handoff"],
-        profile_snapshot: [],
-        provenance: [trigger_message_id],
-        risk_context: {
-          risk_level: risk?.risk_level || "medium",
-          risk_reason: risk?.risk_reason || "Review requested",
-          confidence: risk?.confidence || "low",
-          risk_provenance: risk?.risk_provenance || "system_fallback",
-          escalation_required: true,
-        },
-        status: "pending",
-        created_at: iso(),
-        updated_at: iso(),
-      } satisfies Escalation,
+        source_channel: current.attribution?.source_channel || "website_widget",
+        source_platform: current.attribution?.source_platform || "website",
+        campaign_id: current.attribution?.campaign_id || null,
+        creative: current.attribution?.creative || null,
+        identity_level: "verified",
+        landing_timestamp: iso(),
+      },
+      risk_context: {
+        risk_level: risk?.risk_level || "medium",
+        risk_reason: risk?.risk_reason || "Review requested",
+        confidence: risk?.confidence || "low",
+        risk_provenance: risk?.risk_provenance || "system_fallback",
+        escalation_required: true,
+      },
+      status: "pending",
+      created_at: iso(),
+      updated_at: iso(),
+      clinician_response: null,
+    };
+    current.escalations = [
+      escalation,
+      ...current.escalations.filter(
+        (item) => item.trigger_message_id !== trigger_message_id,
+      ),
+    ];
+    setState(current);
+    return {
+      escalation,
       expected_response_window: "12-18 hours" as const,
     };
   },
@@ -373,7 +455,7 @@ export const api = {
       return (
         await request<{ escalations: Escalation[] }>("/api/staff/escalations")
       ).escalations;
-    return [];
+    return getState().escalations;
   },
   async createReferral(topic: string) {
     if (!MOCK)
@@ -384,6 +466,9 @@ export const api = {
           body: JSON.stringify({ topic, expires_in_hours: 72 }),
         },
       );
+    const state = getState();
+    state.referral_topic = topic;
+    setState(state);
     return {
       staff_referral: {
         staff_referral_id: id("referral"),
@@ -392,6 +477,57 @@ export const api = {
       },
       referral_url: `${window.location.origin}/start?source_channel=staff_referral&source_platform=clinic&referral_token=synthetic-demo-token`,
     };
+  },
+  getFunnelMetrics(): FunnelMetric[] {
+    if (!MOCK) return [];
+    return [
+      {
+        source_channel: "staff_referral",
+        visitors: 18,
+        value_events: 14,
+        patient_conversions: 8,
+        escalations: 2,
+      },
+      {
+        source_channel: "social_comment",
+        visitors: 31,
+        value_events: 22,
+        patient_conversions: 9,
+        escalations: 3,
+      },
+      {
+        source_channel: "instagram_ad_click",
+        visitors: 45,
+        value_events: 30,
+        patient_conversions: 12,
+        escalations: 2,
+      },
+      {
+        source_channel: "website_widget",
+        visitors: 24,
+        value_events: 19,
+        patient_conversions: 10,
+        escalations: 1,
+      },
+    ];
+  },
+  endDemoSession() {
+    if (!MOCK) return;
+    window.localStorage.removeItem(STORAGE_KEY);
+    window.sessionStorage.removeItem(GUEST_VIEW_KEY);
+    window.dispatchEvent(new Event("nightingale-demo-reset"));
+  },
+  resetDemoData() {
+    if (!MOCK) return;
+    window.localStorage.removeItem(STORAGE_KEY);
+    window.sessionStorage.removeItem(GUEST_VIEW_KEY);
+    window.dispatchEvent(new Event("nightingale-demo-reset"));
+  },
+  clearEmergencyLatch() {
+    if (!MOCK) return;
+    const state = getState();
+    state.emergency_latch = null;
+    setState(state);
   },
   mockMode: MOCK,
 };

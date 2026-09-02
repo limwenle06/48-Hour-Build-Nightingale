@@ -6,10 +6,24 @@ export const metadata: Metadata = {
   title: { default: "Nightingale", template: "%s · Nightingale" },
   description: "A secure first step from healthcare inquiry to human care.",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, title: "Nightingale" }
+  appleWebApp: { capable: true, title: "Nightingale" },
 };
-export const viewport: Viewport = { themeColor: "#123c42", width: "device-width", initialScale: 1 };
+export const viewport: Viewport = {
+  themeColor: "#123c42",
+  width: "device-width",
+  initialScale: 1,
+};
 
-export default function RootLayout({children}:{children:React.ReactNode}){
-  return <html lang="en"><body><AppShell>{children}</AppShell></body></html>;
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>
+        <AppShell>{children}</AppShell>
+      </body>
+    </html>
+  );
 }

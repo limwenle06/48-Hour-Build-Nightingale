@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "./api-client";
 import type { Message, SourceChannel, SourcePlatform } from "./frontend-types";
 import { openingCopy } from "@/config/channel-openings";
+import { guestStarterPrompts } from "@/config/starter-prompts";
 import { ChatThread, EmergencyWarning, InlineError, JourneySteps } from "./ui";
 
 export function GuestJourney() {
@@ -23,6 +24,7 @@ export function GuestJourney() {
     [error, setError] = useState<string | null>(null),
     [ready, setReady] = useState(false),
     [consentOpen, setConsentOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"signup" | "login">("signup");
   const clinic = "Demo Women’s Clinic";
   const acquisition = useMemo(
     () => ({
@@ -44,16 +46,20 @@ export function GuestJourney() {
         if (live) {
           setLeadId(result.lead_session_id);
           if (api.mockMode) {
-            const recovered = api.getMockJourney().guest_messages;
+            const recovered = api.openMockGuestView();
             setMessages(recovered);
             setReady(
               recovered.some((message) => message.sender_type === "guest"),
             );
           }
-          setOpening(
+          const base =
             openingCopy[result.opening_strategy] ||
-              openingCopy.neutral_clinic_help,
-          );
+            openingCopy.neutral_clinic_help;
+          const topic =
+            api.mockMode && source_channel === "staff_referral"
+              ? api.getMockJourney().referral_topic
+              : null;
+          setOpening(topic ? `${base} Your care team noted: “${topic}”` : base);
         }
       })
       .catch((e) => setError(e.message));
@@ -61,10 +67,9 @@ export function GuestJourney() {
       live = false;
     };
   }, [acquisition]);
-  async function send(e: FormEvent) {
-    e.preventDefault();
-    if (!leadId || !text.trim() || busy) return;
-    const content = text.trim();
+  async function sendContent(content: string) {
+    if (!leadId || !content.trim() || busy) return;
+    content = content.trim();
     setText("");
     setBusy(true);
     setError(null);
@@ -78,6 +83,10 @@ export function GuestJourney() {
     } finally {
       setBusy(false);
     }
+  }
+  async function send(e: FormEvent) {
+    e.preventDefault();
+    await sendContent(text);
   }
   async function begin() {
     if (!leadId) return;
@@ -110,9 +119,8 @@ export function GuestJourney() {
       <section className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]">
         <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-soft">
           <div className="border-b border-line px-5 py-4">
-            <span className="block text-xs capitalize text-slate-500">
-              {source_channel.replaceAll("_", " ")} ·{" "}
-              {api.mockMode ? "synthetic demo" : "connected"}
+            <span className="block text-xs text-slate-500">
+              Private until you choose to share
             </span>
             <strong>Ask Nightingale</strong>
           </div>
@@ -130,6 +138,27 @@ export function GuestJourney() {
               </div>
             }
           />
+          {!messages.length && (
+            <div className="border-t border-line bg-white px-4 py-4">
+              <p className="mb-3 font-bold">What’s bothering you?</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {guestStarterPrompts.map((prompt) => (
+                  <button
+                    type="button"
+                    key={prompt}
+                    onClick={() => sendContent(prompt)}
+                    disabled={!leadId || busy}
+                    className="focus-ring rounded-xl border border-line bg-slate-50 px-3 py-2 text-left text-sm hover:border-teal disabled:opacity-50"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-3 text-xs text-slate-500">
+                Short phrases are okay. There’s no wrong way to start.
+              </p>
+            </div>
+          )}
           <InlineError message={error} />
           <form onSubmit={send} className="flex gap-2 p-3">
             <label className="sr-only" htmlFor="guest-message">
@@ -172,7 +201,7 @@ export function GuestJourney() {
             </button>
           )}
           <div className="mt-5 rounded-xl bg-mint p-3 text-sm">
-            🔒 The clinic cannot see this yet.
+            The clinic cannot see this chat yet.
           </div>
         </aside>
       </section>
@@ -196,14 +225,34 @@ export function GuestJourney() {
               ×
             </button>
             <p className="text-xs font-bold uppercase tracking-widest text-teal">
-              Continue securely
+              {authMode === "signup"
+                ? "Create your secure space"
+                : "Welcome back"}
             </p>
             <h2 id="consent-title" className="mt-2 text-2xl font-bold">
-              Keep going without repeating yourself.
+              {authMode === "signup"
+                ? "Keep going without repeating yourself."
+                : "Sign in to continue."}
             </h2>
             <p className="mt-2 text-slate-600">
               Only you decide what the clinic sees.
             </p>
+            <div className="mt-4 grid grid-cols-2 rounded-xl bg-slate-100 p-1">
+              <button
+                type="button"
+                onClick={() => setAuthMode("signup")}
+                className={`rounded-lg px-3 py-2 text-sm font-bold ${authMode === "signup" ? "bg-white shadow" : ""}`}
+              >
+                Sign up
+              </button>
+              <button
+                type="button"
+                onClick={() => setAuthMode("login")}
+                className={`rounded-lg px-3 py-2 text-sm font-bold ${authMode === "login" ? "bg-white shadow" : ""}`}
+              >
+                Log in
+              </button>
+            </div>
             <div className="mt-5 grid gap-3">
               <label className="text-sm font-semibold">
                 Verified email
@@ -236,11 +285,11 @@ export function GuestJourney() {
             >
               {busy ? "Continuing…" : "Continue"}
             </button>
-            <p className="mt-3 text-xs text-slate-500">
-              Mock mode simulates verification with synthetic details. In
-              connected mode, Kash’s authentication session must already be
-              verified before the consent API succeeds.
-            </p>
+            {api.mockMode && (
+              <p className="mt-3 text-xs text-slate-500">
+                Developer demo: verification and consent are simulated.
+              </p>
+            )}
           </form>
         </div>
       )}

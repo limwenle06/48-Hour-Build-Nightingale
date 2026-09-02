@@ -49,7 +49,8 @@ describe("patient presentation", () => {
   it("keeps memory status and provenance visible", () => {
     render(<LivingProfile items={[memory]} />);
     expect(screen.getByText("Advil")).toBeInTheDocument();
-    expect(screen.getByText(/stopped · source message-2/)).toBeInTheDocument();
+    expect(screen.getByText("stopped")).toBeInTheDocument();
+    expect(screen.getByText(/Message message-2/)).toBeInTheDocument();
   });
   it("renders an empty Living Profile truthfully", () => {
     render(<LivingProfile items={[]} />);

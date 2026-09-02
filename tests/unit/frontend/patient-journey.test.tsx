@@ -9,9 +9,19 @@ vi.mock("next/navigation", () => ({
 import { PatientJourney } from "@/components/nightingale/patient-journey";
 
 describe("PatientJourney synthetic safety states", () => {
+  async function openPatient() {
+    const { api } = await import("@/components/nightingale/api-client");
+    const lead = await api.createLead({
+      clinic_id: "clinic_demo",
+      source_channel: "website_widget",
+      source_platform: "website",
+    });
+    await api.consentAndConvert(lead.lead_session_id);
+    render(<PatientJourney />);
+  }
   it("keeps the high emergency interruption after the secondary demo clinic action", async () => {
     const user = userEvent.setup();
-    render(<PatientJourney />);
+    await openPatient();
     await user.type(
       screen.getByLabelText("Your message"),
       "I want to hurt myself",
@@ -26,11 +36,19 @@ describe("PatientJourney synthetic safety states", () => {
     );
     expect(await screen.findByText(/Demo clinic alert recorded/)).toBeVisible();
     expect(screen.getByText("EMERGENCY · HIGH RISK")).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Send to Nurse/Clinic too" }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Close emergency warning" }),
+    );
+    expect(screen.queryByText("EMERGENCY · HIGH RISK")).not.toBeInTheDocument();
+    expect(screen.getByText(/Demo clinic alert recorded/)).toBeVisible();
   });
 
   it("shows medium human review without a 999 emergency action", async () => {
     const user = userEvent.setup();
-    render(<PatientJourney />);
+    await openPatient();
     await user.type(
       screen.getByLabelText("Your message"),
       "My chest feels funny",
@@ -58,7 +76,7 @@ describe("PatientJourney synthetic safety states", () => {
       await screen.findByText("Please keep this exact concern"),
     ).toBeVisible();
     first.unmount();
-    render(<PatientJourney />);
+    await openPatient();
     expect(
       await screen.findByText("Please keep this exact concern"),
     ).toBeVisible();
@@ -66,7 +84,7 @@ describe("PatientJourney synthetic safety states", () => {
 
   it("shows failed processing fallback and no assistant advice", async () => {
     const user = userEvent.setup();
-    render(<PatientJourney />);
+    await openPatient();
     await user.type(
       screen.getByLabelText("Your message"),
       "Demo: processing failure",
@@ -82,7 +100,7 @@ describe("PatientJourney synthetic safety states", () => {
 
   it("shows a truthful synthetic handoff failure while keeping review visible", async () => {
     const user = userEvent.setup();
-    render(<PatientJourney />);
+    await openPatient();
     await user.type(
       screen.getByLabelText("Your message"),
       "Demo: handoff failure",
@@ -99,7 +117,7 @@ describe("PatientJourney synthetic safety states", () => {
 
   it("disables a fixture-declared unavailable handoff", async () => {
     const user = userEvent.setup();
-    render(<PatientJourney />);
+    await openPatient();
     await user.type(
       screen.getByLabelText("Your message"),
       "Demo: handoff unavailable",
@@ -108,5 +126,71 @@ describe("PatientJourney synthetic safety states", () => {
     expect(
       await screen.findByRole("button", { name: "Send to Nurse/Clinic" }),
     ).toBeDisabled();
+  });
+
+  it("keeps a HIGH warning latched after a later ordinary message", async () => {
+    const user = userEvent.setup();
+    await openPatient();
+    await user.type(
+      screen.getByLabelText("Your message"),
+      "I want to hurt myself",
+    );
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("EMERGENCY · HIGH RISK")).toBeVisible();
+    await user.type(screen.getByLabelText("Your message"), "hi");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(screen.getByText("EMERGENCY · HIGH RISK")).toBeVisible();
+  });
+
+  it("asks before dismissing HIGH prior to handoff", async () => {
+    const user = userEvent.setup();
+    await openPatient();
+    await user.type(
+      screen.getByLabelText("Your message"),
+      "I want to hurt myself",
+    );
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Close emergency warning" }),
+    );
+    expect(
+      screen.getByRole("dialog", { name: "Close this emergency warning?" }),
+    ).toBeVisible();
+    expect(screen.getByRole("button", { name: "Keep warning" })).toBeVisible();
+  });
+
+  it("Keep warning preserves HIGH and Close warning dismisses only its UI", async () => {
+    const user = userEvent.setup();
+    await openPatient();
+    await user.type(
+      screen.getByLabelText("Your message"),
+      "I want to hurt myself",
+    );
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Close emergency warning" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Keep warning" }));
+    expect(screen.getByText("EMERGENCY · HIGH RISK")).toBeVisible();
+    await user.click(
+      screen.getByRole("button", { name: "Close emergency warning" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Close warning" }));
+    expect(screen.queryByText("EMERGENCY · HIGH RISK")).not.toBeInTheDocument();
+    await user.type(
+      screen.getByLabelText("Your message"),
+      "I want to hurt myself",
+    );
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("EMERGENCY · HIGH RISK")).toBeVisible();
+  });
+
+  it("clears visible authenticated chat when the demo session ends", async () => {
+    await openPatient();
+    expect(screen.getByLabelText("Your message")).toBeVisible();
+    const { api } = await import("@/components/nightingale/api-client");
+    api.endDemoSession();
+    expect(await screen.findByText("Your chat is closed.")).toBeVisible();
+    expect(screen.queryByLabelText("Your message")).not.toBeInTheDocument();
   });
 });

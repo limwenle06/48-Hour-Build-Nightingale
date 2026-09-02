@@ -99,4 +99,44 @@ describe("synthetic frontend adapter", () => {
     );
     expect(result.risk_assessment.risk_level).toBe("low");
   });
+
+  it("logout/reset removes the synthetic authenticated session and history", async () => {
+    const { api } = await import("@/components/nightingale/api-client");
+    const lead = await api.createLead({
+      clinic_id: "clinic_demo",
+      source_channel: "website_widget",
+      source_platform: "website",
+    });
+    await api.sendGuest(lead.lead_session_id, "private synthetic concern");
+    await api.consentAndConvert(lead.lead_session_id);
+    expect(api.getMockJourney().authenticated).toBe(true);
+    api.endDemoSession();
+    expect(api.getMockJourney().authenticated).toBe(false);
+    expect(api.getMockJourney().guest_messages).toEqual([]);
+  });
+
+  it("stores a successful synthetic handoff in the synthetic clinic queue", async () => {
+    const { api } = await import("@/components/nightingale/api-client");
+    const result = await api.sendPatient(
+      "patient_session_demo",
+      "My chest feels funny",
+    );
+    await api.createEscalation(
+      "patient_session_demo",
+      result.patient_message.message_id,
+      result.risk_assessment.risk_assessment_id,
+    );
+    const queue = await api.getEscalations();
+    expect(queue).toHaveLength(1);
+    expect(queue[0].triage_summary[0]).toBe("My chest feels funny");
+    expect(queue[0].attribution.source_channel).toBe("website_widget");
+  });
+
+  it("keeps the synthetic staff-referral topic available to the guest UI", async () => {
+    const { api } = await import("@/components/nightingale/api-client");
+    await api.createReferral("asked about egg freezing at today’s visit");
+    expect(api.getMockJourney().referral_topic).toBe(
+      "asked about egg freezing at today’s visit",
+    );
+  });
 });
