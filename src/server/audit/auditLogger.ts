@@ -1,39 +1,65 @@
 // src/server/audit/auditLogger.ts
-import { AuditEvent, AuditEventType } from '../../contracts';
+import { SupabaseClient } from '@supabase/supabase-js';
 
-/**
- * Sanitizes metadata to strictly remove raw message content or potential PHI fields
- */
-function sanitizeMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
-  const { message_content, raw_text, patient_name, phone, email, ...safeMetadata } = metadata;
-  return safeMetadata;
+type Role = 'guest' | 'patient' | 'staff' | 'nurse' | 'clinician';
+
+interface AuditLogInput {
+  clinicId?: string | null;
+  actorUserId?: string | null;
+  actorRole: Role;
+  eventType: string;
+  resourceType: string;
+  resourceId?: string | null;
+  outcome: 'success' | 'denied' | 'failed';
+  requestId: string;
+  metadata?: Record<string, string | number | boolean | null>;
 }
 
-/**
- * Creates a structured PHI-free JSON audit log entry
- */
+const FORBIDDEN_METADATA_KEYS = [
+  'content',
+  'message',
+  'name',
+  'email',
+  'phone',
+  'ic',
+  'id_number',
+  'password',
+  'token',
+  'recovery_token',
+  'auth_token',
+  'prompt',
+  'response',
+];
+
 export async function logAuditEvent(
-  eventType: AuditEventType,
-  clinicId: string,
-  sessionId?: string,
-  userHash?: string,
-  metadata: Record<string, unknown> = {}
-): Promise<AuditEvent> {
-  const auditEntry: AuditEvent = {
-    id: crypto.randomUUID(),
-    timestamp: new Date().toISOString(),
-    event_type: eventType,
-    clinic_id: clinicId,
-    session_id: sessionId,
-    user_id_hash: userHash,
-    metadata: sanitizeMetadata(metadata),
-  };
+  supabase: SupabaseClient,
+  input: AuditLogInput
+): Promise<void> {
+  const sanitizedMetadata: Record<string, string | number | boolean | null> = {};
 
-  // Output structured JSON for system log collectors (Datadog, Supabase, CloudWatch)
-  console.log(JSON.stringify(auditEntry));
+  if (input.metadata) {
+    for (const [key, value] of Object.entries(input.metadata)) {
+      const lowerKey = key.toLowerCase();
+      const isForbidden = FORBIDDEN_METADATA_KEYS.some((forbidden) =>
+        lowerKey.includes(forbidden)
+      );
 
-  // Optional: Persist to Supabase audit_logs table if configured
-  // await supabase.from('audit_logs').insert(auditEntry);
+      if (!isForbidden) {
+        sanitizedMetadata[key] = value;
+      }
+    }
+  }
 
-  return auditEntry;
+  await supabase.from('audit_logs').insert({
+    clinic_id: input.clinicId || null,
+    actor_user_id: input.actorUserId || null,
+    actor_role: input.actorRole,
+    event_type: input.eventType,
+    resource_type: input.resourceType,
+    resource_id: input.resourceId || null,
+    outcome: input.outcome,
+    request_id: input.requestId,
+    metadata: sanitizedMetadata,
+    created_at: new Date().toISOString(),
+  });
 }
