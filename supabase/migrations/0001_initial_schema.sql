@@ -202,3 +202,12 @@ CREATE TABLE audit_logs (
     metadata JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
 );
+
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Enable user isolation on messages" ON messages FOR ALL USING (auth.uid() = user_id);
+
+ALTER TABLE memory_items ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Enable user isolation on memory_items" ON memory_items FOR ALL USING (auth.uid() = user_id);
+
+ALTER TABLE escalations ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Enable user isolation on escalations" ON escalations FOR ALL USING (auth.uid() = user_id);
