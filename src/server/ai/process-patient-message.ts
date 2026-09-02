@@ -22,6 +22,7 @@ export interface ProcessPatientMessageOptions {
   provider: LlmProvider;
   memory_provider?: LlmProvider;
   response_timeout_ms?: number;
+  memory_timeout_ms?: number;
 }
 
 /**
@@ -60,7 +61,10 @@ export async function processPatientMessage(
       redaction,
       current_profile: message.current_profile,
     },
-    { provider: options.memory_provider },
+    {
+      provider: options.memory_provider,
+      timeout_ms: options.memory_timeout_ms,
+    },
   );
   const memoryMutations = buildMemoryMutations({
     message_id: message.message_id,

@@ -204,6 +204,28 @@ describe("extractMemory", () => {
     );
   });
 
+  it("uses deterministic extraction when the provider times out", async () => {
+    const provider = new FakeLlmProvider(
+      () => new Promise<string>(() => undefined),
+    );
+    const result = await extractMemory(
+      {
+        message_id: messageId,
+        redaction: redactPhi("I take Metformin."),
+        current_profile: [],
+      },
+      { provider, timeout_ms: 5 },
+    );
+
+    expect(result.source).toBe("deterministic");
+    expect(result.candidates).toContainEqual(
+      expect.objectContaining({
+        type: "medication",
+        value: "Metformin",
+      }),
+    );
+  });
+
   it("blocks extraction and provider use when redaction failed", async () => {
     const provider = new FakeLlmProvider();
     const result = await extractMemory(

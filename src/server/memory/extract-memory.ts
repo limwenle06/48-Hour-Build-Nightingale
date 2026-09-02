@@ -13,6 +13,8 @@ import {
   normalizeMemoryValue,
 } from "./normalize-memory";
 
+const DEFAULT_MEMORY_EXTRACTION_TIMEOUT_MS = 8_000;
+
 const MEMORY_EXTRACTION_INSTRUCTIONS = `
 Extract only healthcare facts explicitly stated by the patient.
 Return JSON only in this exact shape:
@@ -41,6 +43,45 @@ export interface ExtractMemoryInput {
 
 export interface ExtractMemoryOptions {
   provider?: LlmProvider;
+  timeout_ms?: number;
+}
+
+class MemoryExtractionTimeoutError extends Error {
+  constructor() {
+    super("The Memory extraction provider timed out.");
+    this.name = "MemoryExtractionTimeoutError";
+  }
+}
+
+async function generateWithTimeout(
+  provider: LlmProvider,
+  redactedInput: string,
+  timeoutMs: number,
+) {
+  const controller = new AbortController();
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_resolve, reject) => {
+    timeoutHandle = setTimeout(() => {
+      controller.abort();
+      reject(new MemoryExtractionTimeoutError());
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([
+      provider.generate({
+        redacted_input: redactedInput,
+        instructions: MEMORY_EXTRACTION_INSTRUCTIONS,
+        max_output_tokens: 500,
+        signal: controller.signal,
+      }),
+      timeoutPromise,
+    ]);
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
+  }
 }
 
 function parseProviderJson(text: string): MemoryExtractionCandidate[] | null {
@@ -110,12 +151,19 @@ export async function extractMemory(
     return { source: "deterministic", candidates: deterministicCandidates };
   }
 
+  const timeoutMs =
+    options.timeout_ms ?? DEFAULT_MEMORY_EXTRACTION_TIMEOUT_MS;
+
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    return { source: "deterministic", candidates: deterministicCandidates };
+  }
+
   try {
-    const providerResult = await options.provider.generate({
-      redacted_input: redaction.data.redacted_text,
-      instructions: MEMORY_EXTRACTION_INSTRUCTIONS,
-      max_output_tokens: 500,
-    });
+    const providerResult = await generateWithTimeout(
+      options.provider,
+      redaction.data.redacted_text,
+      timeoutMs,
+    );
     const modelCandidates = parseProviderJson(providerResult.text);
 
     if (modelCandidates === null) {

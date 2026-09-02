@@ -16,3 +16,19 @@ This module contains the provider-neutral LLM boundary and Nightingale response 
 Never instantiate a provider in browser code. Never pass raw message content to a provider. Medium/high risk, redaction failure, provider timeout, provider error, empty output, or unsafe output returns deterministic safe text instead.
 
 Recent messages are validated at the boundary but are not sent to the provider in the core prototype. Any future use must redact every included message first.
+
+## Backend handoff
+
+Person 2 calls the facade only after authentication, clinic/patient ownership, healthcare consent, request validation, rate limiting, and patient-message persistence:
+
+```ts
+import { createLlmProvider } from "./provider-factory";
+import { processPatientMessage } from "./process-patient-message";
+
+const provider = createLlmProvider();
+const result = await processPatientMessage(contractInput, { provider });
+```
+
+`contractInput` must follow `patientMessageProcessingInputSchema`. The returned value follows `patientMessageProcessingOutputSchema`. Person 2 must validate it again, assign persistent IDs, save accepted results transactionally, and return only data that was successfully saved.
+
+The optional `memory_provider` can improve structured extraction. If it fails, returns invalid JSON, or exceeds `memory_timeout_ms`, deterministic Memory extraction is used instead.

@@ -136,6 +136,35 @@ describe("Person 3 patient-message pipeline", () => {
     expect(result.memory_mutations.length).toBeGreaterThan(0);
   });
 
+  it("continues with redacted deterministic Memory when its provider times out", async () => {
+    const responseProvider = new FakeLlmProvider(
+      () => "I can provide general information for your clinic discussion.",
+    );
+    const memoryProvider = new FakeLlmProvider(
+      () => new Promise<string>(() => undefined),
+    );
+    const result = await processPatientMessage(
+      buildInput("My name is Amelia Tan. I take Metformin."),
+      {
+        provider: responseProvider,
+        memory_provider: memoryProvider,
+        memory_timeout_ms: 5,
+      },
+    );
+
+    expect(result.processing_status).toBe("success");
+    expect(result.memory_mutations).toContainEqual(
+      expect.objectContaining({
+        type: "medication",
+        normalized_value: "metformin",
+        provenance_pointer: IDs.message,
+      }),
+    );
+    expect(memoryProvider.calls).toHaveLength(1);
+    expect(memoryProvider.calls[0]?.redacted_input).toContain("[REDACTED]");
+    expect(memoryProvider.calls[0]?.redacted_input).not.toContain("Amelia Tan");
+  });
+
   it("rejects invalid boundary input before any provider call", async () => {
     const provider = new FakeLlmProvider();
 
