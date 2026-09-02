@@ -1,0 +1,408 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  guest
+  patient
+  staff
+  nurse
+  clinician
+}
+
+enum SourceChannel {
+  staff_referral
+  social_comment
+  instagram_ad_click
+  website_widget
+}
+
+enum SourcePlatform {
+  clinic
+  instagram
+  tiktok
+  facebook
+  website
+  other
+}
+
+enum IdentityLevel {
+  anonymous
+  social_handle
+  contact_provided
+  verified
+}
+
+enum FunnelEventName {
+  visitor
+  conversation_started
+  value_event
+  auth_started
+  consented
+  patient_created
+  escalation_sent
+}
+
+enum SenderType {
+  guest
+  patient
+  ai
+  staff
+  nurse
+  clinician
+}
+
+enum SessionType {
+  lead
+  patient
+}
+
+enum MessageKind {
+  text
+  system
+}
+
+enum ConsentType {
+  health_data_sharing
+  marketing
+}
+
+enum ConsentStatus {
+  granted
+  revoked
+}
+
+enum RiskLevel {
+  low
+  medium
+  high
+}
+
+enum Confidence {
+  low
+  med
+  high
+}
+
+enum RiskProvenance {
+  deterministic
+  model
+  combined
+  system_fallback
+}
+
+enum MemoryType {
+  chief_complaint
+  symptom
+  symptom_timeline
+  medication
+  allergy
+}
+
+enum MemoryStatus {
+  active
+  stopped
+  resolved
+  historical
+  unknown
+}
+
+enum MemorySourceSessionType {
+  lead
+  patient
+}
+
+enum EscalationStatus {
+  pending
+  in_review
+  responded
+  closed
+}
+
+enum ReferralStatus {
+  active
+  converted
+  expired
+  revoked
+}
+
+enum TranscriptionStatus {
+  not_applicable
+  pending
+  completed
+  failed
+}
+
+enum ProcessingStatus {
+  success
+  blocked
+  failed
+}
+
+model Clinic {
+  clinic_id   String   @id @default(uuid())
+  name        String
+  timezone    String
+  created_at  DateTime @default(now())
+
+  users          User[]
+  patients       Patient[]
+  staff_users    StaffUser[]
+  lead_sessions  LeadSession[]
+  messages       Message[]
+  patient_sessions PatientSession[]
+  consents       Consent[]
+  escalations    Escalation[]
+  funnel_events  FunnelEvent[]
+  staff_referrals StaffReferral[]
+
+  @@map("clinics")
+}
+
+model User {
+  user_id        String   @id @default(uuid())
+  auth_user_id   String   @unique
+  clinic_id      String
+  clinic         Clinic   @relation(fields: [clinic_id], references: [clinic_id], onDelete: Cascade)
+  role           Role     @default(patient)
+  verified_email String   @unique
+  phone          String?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  patient        Patient?
+  staff_profile  StaffUser?
+
+  @@map("users")
+}
+
+model Patient {
+  patient_id     String   @id @default(uuid())
+  user_id        String   @unique
+  user           User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  clinic_id      String
+  clinic         Clinic   @relation(fields: [clinic_id], references: [clinic_id], onDelete: Cascade)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  patient_sessions PatientSession[]
+  consents         Consent[]
+  risk_assessments RiskAssessment[]
+  memory_items     MemoryItem[]
+  escalations      Escalation[]
+
+  @@map("patients")
+}
+
+model StaffUser {
+  staff_user_id String   @id @default(uuid())
+  user_id       String   @unique
+  user          User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  clinic_id     String
+  clinic        Clinic   @relation(fields: [clinic_id], references: [clinic_id], onDelete: Cascade)
+  role          Role     // staff, nurse, clinician
+  created_at    DateTime @default(now())
+
+  staff_referrals StaffReferral[]
+
+  @@map("staff_users")
+}
+
+model LeadSession {
+  lead_session_id          String             @id @default(uuid())
+  clinic_id                String
+  clinic                   Clinic             @relation(fields: [clinic_id], references: [clinic_id], onDelete: Cascade)
+  source_channel           SourceChannel
+  source_platform          SourcePlatform
+  campaign_id              String?
+  creative                 String?
+  identity_level           IdentityLevel      @default(anonymous)
+  social_handle            String?
+  staff_referral_id        String?
+  status                   String             @default("active") // active, auth_started, converted, expired
+  recovery_expires_at      DateTime
+  converted_patient_id     String?
+  converted_patient_session_id String?
+  created_at               DateTime           @default(now())
+  updated_at               DateTime           @updatedAt
+
+  patient_sessions         PatientSession[]
+
+  @@map("lead_sessions")
+}
+
+model PatientSession {
+  patient_session_id       String       @id @default(uuid())
+  patient_id               String
+  patient                  Patient      @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)
+  clinic_id                String
+  clinic                   Clinic       @relation(fields: [clinic_id], references: [clinic_id], onDelete: Cascade)
+  source_lead_session_id   String?
+  source_lead_session      LeadSession? @relation(fields: [source_lead_session_id], references: [lead_session_id], onDelete: SetNull)
+  source_channel           SourceChannel
+  source_platform          SourcePlatform
+  campaign_id              String?
+  creative                 String?
+  identity_level           IdentityLevel
+  landing_timestamp        DateTime
+  started_at               DateTime     @default(now())
+  ended_at                 DateTime?
+  created_at               DateTime     @default(now())
+  updated_at               DateTime     @updatedAt
+
+  risk_assessments         RiskAssessment[]
+  escalations              Escalation[]
+
+  @@map("patient_sessions")
+}
+
+model Message {
+  message_id               String              @id @default(uuid())
+  clinic_id                String
+  clinic                   Clinic              @relation(fields: [clinic_id], references: [clinic_id], onDelete: Cascade)
+  session_type             SessionType
+  session_id               String              // LeadSession or PatientSession ID
+  sender_type              SenderType
+  message_kind             MessageKind         @default(text)
+  content                  String
+  migrated_from_message_id String?
+  audio_asset_id           String?
+  transcript_id            String?
+  transcription_status     TranscriptionStatus @default(not_applicable)
+  created_at               DateTime            @default(now())
+
+  risk_assessment          RiskAssessment?
+
+  @@map("messages")
+}
+
+model Consent {
+  consent_id     String        @id @default(uuid())
+  patient_id     String
+  patient        Patient       @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)
+  clinic_id      String
+  clinic         Clinic        @relation(fields: [clinic_id], references: [clinic_id], onDelete: Cascade)
+  consent_type   ConsentType
+  status         ConsentStatus
+  policy_version String
+  granted_at     DateTime?
+  revoked_at     DateTime?
+  created_at     DateTime      @default(now())
+
+  @@map("consents")
+}
+
+model RiskAssessment {
+  risk_assessment_id   String         @id @default(uuid())
+  patient_id           String
+  patient              Patient        @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)
+  patient_session_id   String
+  patient_session      PatientSession @relation(fields: [patient_session_id], references: [patient_session_id], onDelete: Cascade)
+  message_id           String         @unique
+  message              Message        @relation(fields: [message_id], references: [message_id], onDelete: Cascade)
+  risk_level           RiskLevel
+  risk_reason          String
+  confidence           Confidence
+  risk_provenance      RiskProvenance
+  matched_rule_ids     String[]
+  escalation_required  boolean
+  created_at           DateTime       @default(now())
+
+  escalations          Escalation[]
+
+  @@map("risk_assessments")
+}
+
+model MemoryItem {
+  memory_item_id         String                  @id @default(uuid())
+  patient_id             String
+  patient                Patient                 @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)
+  type                   MemoryType
+  value                  String
+  normalized_value       String
+  status                 MemoryStatus
+  provenance_pointer     String                  // originating Message.message_id
+  source_session_type    MemorySourceSessionType
+  supersedes_memory_item_id String?
+  confidence             Confidence
+  created_at             DateTime                @default(now())
+  updated_at             DateTime                @updatedAt
+
+  @@map("memory_items")
+}
+
+model Escalation {
+  escalation_id        String           @id @default(uuid())
+  clinic_id            String
+  clinic               Clinic           @relation(fields: [clinic_id], references: [clinic_id], onDelete: Cascade)
+  patient_id           String
+  patient              Patient          @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)
+  patient_session_id   String
+  patient_session      PatientSession   @relation(fields: [patient_session_id], references: [patient_session_id], onDelete: Cascade)
+  trigger_message_id   String
+  risk_assessment_id   String
+  risk_assessment      RiskAssessment   @relation(fields: [risk_assessment_id], references: [risk_assessment_id], onDelete: Cascade)
+  triage_summary       String[]         // 1-5 concise bullets
+  profile_snapshot     Json             // Stored snapshot array
+  provenance           String[]         // unique Message.message_id values
+  attribution          Json             // Snapshot attribution object
+  risk_context         Json             // Snapshot risk details
+  status               EscalationStatus @default(pending)
+  clinician_response   Json?            // Nullable response payload
+  created_at           DateTime         @default(now())
+  updated_at           DateTime         @updatedAt
+
+  @@map("escalations")
+}
+
+model FunnelEvent {
+  funnel_event_id    String          @id @default(uuid())
+  clinic_id          String
+  clinic             Clinic          @relation(fields: [clinic_id], references: [clinic_id], onDelete: Cascade)
+  event_name         FunnelEventName
+  lead_session_id    String?
+  patient_id         String?
+  patient_session_id String?
+  source_channel     SourceChannel
+  campaign_id        String?
+  metadata           Json            // Must NOT contain PHI
+  occurred_at        DateTime        @default(now())
+
+  @@map("funnel_events")
+}
+
+model StaffReferral {
+  staff_referral_id         String         @id @default(uuid())
+  clinic_id                 String
+  clinic                    Clinic         @relation(fields: [clinic_id], references: [clinic_id], onDelete: Cascade)
+  created_by_staff_user_id  String
+  staff_user                StaffUser      @relation(fields: [created_by_staff_user_id], references: [staff_user_id], onDelete: Cascade)
+  topic                     String
+  token_hash                String         // One-way hash of opaque token
+  status                    ReferralStatus @default(active)
+  expires_at                DateTime
+  created_at                DateTime       @default(now())
+
+  @@map("staff_referrals")
+}
+
+model AuditLog {
+  audit_log_id String   @id @default(uuid())
+  clinic_id    String?
+  actor_user_id String?
+  actor_role   Role
+  event_type   String
+  resource_type String
+  resource_id  String?
+  outcome      String   // success, denied, failed
+  request_id   String
+  metadata     Json     // Must NOT contain raw message content or PHI
+  created_at   DateTime @default(now())
+
+  @@map("audit_logs")
+}
