@@ -1,46 +1,88 @@
 // src/server/auth/authService.ts
-import { UserRole } from '../../contracts';
+import { SupabaseClient } from '@supabase/supabase-js';
 
-export interface AuthSession {
-  userId: string;
-  role: UserRole;
-  email: string;
+interface EnsureIdentityShellInput {
+  authUserId: string;
+  verifiedEmail: string;
+  clinicId: string;
+  phone?: string | null;
 }
 
-/**
- * Validates request authentication and enforces Role-Based Access Control (RBAC)
- */
-export async function verifyUserRole(
-  userRole: UserRole,
-  allowedRoles: UserRole[]
-): Promise<boolean> {
-  return allowedRoles.includes(userRole);
-}
+export async function ensurePatientIdentityShell(
+  supabase: SupabaseClient,
+  input: EnsureIdentityShellInput
+) {
+  const { authUserId, verifiedEmail, clinicId, phone } = input;
 
-/**
- * Handles Auth + Consent transition from LeadSession to PatientSession
- */
-export async function handlePatientConsentAndAuth(params: {
-  sessionId: string;
-  userId: string;
-  email: string;
-  phone: string;
-  marketingConsent: boolean;
-}) {
-  const consentTimestamp = new Date().toISOString();
+  // 1. Find or create the User record
+  let { data: user, error: userError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('auth_user_id', authUserId)
+    .single();
 
-  // 1. Record consent and link user in DB
-  const consentRecord = {
-    session_id: params.sessionId,
-    user_id: params.userId,
-    verified_email: params.email,
-    verified_phone: params.phone,
-    consented_at: consentTimestamp,
-    marketing_consent: params.marketingConsent,
-  };
+  if (!user || userError) {
+    const { data: newUser, error: createError } = await supabase
+      .from('users')
+      .insert({
+        auth_user_id: authUserId,
+        role: 'patient',
+        verified_email: verifiedEmail,
+        phone: phone || null,
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (createError || !newUser) {
+      throw new Error('Failed to provision user identity record');
+    }
+    user = newUser;
+  } else {
+    // Update contact info if changed, without altering historical keys or patient_id
+    const { data: updatedUser, error: updateError } = await supabase
+      .from('users')
+      .update({
+        verified_email: verifiedEmail,
+        phone: phone !== undefined ? phone : user.phone,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', user.user_id)
+      .select()
+      .single();
+
+    if (!updateError && updatedUser) {
+      user = updatedUser;
+    }
+  }
+
+  // 2. Ensure clinic-scoped Patient identity shell exists
+  // This shell grants NO access to protected patient workflows until health consent is granted.
+  let { data: patient, error: patientError } = await supabase
+    .from('patients')
+    .select('*')
+    .eq('user_id', user.user_id)
+    .eq('clinic_id', clinicId)
+    .single();
+
+  if (!patient || patientError) {
+    const { data: newPatient, error: createPatientError } = await supabase
+      .from('patients')
+      .insert({
+        user_id: user.user_id,
+        clinic_id: clinicId,
+      })
+      .select()
+      .single();
+
+    if (createPatientError || !newPatient) {
+      throw new Error('Failed to provision clinic-scoped patient identity shell');
+    }
+    patient = newPatient;
+  }
 
   return {
-    success: true,
-    consentRecord,
+    user,
+    patient,
   };
 }
