@@ -4,9 +4,9 @@ declare const expect: (actual: any) => any;
 
 import { getOpeningStrategy } from '../../../src/server/services/channelRules';
 import { createLeadSession, convertToPatientSession } from '../../../src/server/data/sessionRepository';
-import { logAuditEvent } from '../../../src/server/audit/auditLogger';
+import { logAuditEvent } from '../../../src/server/audit/logger';
 
-describe('Kash Backend Core Micro-Tests', () => {
+describe('Backend Core Micro-Tests', () => {
 
   // Test 1: Channel Rules Differentiation
   it('returns channel-appropriate opening strategy', () => {
