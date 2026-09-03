@@ -1,5 +1,7 @@
 export type SourceChannel =
   "staff_referral" | "social_comment" | "instagram_ad_click" | "website_widget";
+export type SourcePlatform =
+  "clinic" | "instagram" | "tiktok" | "facebook" | "website" | "other";
 export type IdentityLevel =
   "anonymous" | "social_handle" | "contact_provided" | "verified";
 export type TimeOfDay = "business_hours" | "after_hours";
@@ -71,3 +73,31 @@ export const openingCopy: Record<string, string> = {
   neutral_clinic_help:
     "Ask a general clinic or health question first — no account needed.",
 };
+
+const sourceChannels: readonly SourceChannel[] = [
+  "staff_referral",
+  "social_comment",
+  "instagram_ad_click",
+  "website_widget",
+];
+const sourcePlatforms: readonly SourcePlatform[] = [
+  "clinic",
+  "instagram",
+  "tiktok",
+  "facebook",
+  "website",
+  "other",
+];
+
+/** Keeps untrusted URL parameters inside the canonical acquisition contract. */
+export function canonicalSourceChannel(value: string | null): SourceChannel {
+  return sourceChannels.includes(value as SourceChannel)
+    ? (value as SourceChannel)
+    : "website_widget";
+}
+
+export function canonicalSourcePlatform(value: string | null): SourcePlatform {
+  return sourcePlatforms.includes(value as SourcePlatform)
+    ? (value as SourcePlatform)
+    : "website";
+}

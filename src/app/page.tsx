@@ -20,7 +20,7 @@ export default function Home() {
           <div>
             <Link
               className="focus-ring inline-block rounded-xl bg-teal px-6 py-4 text-lg font-bold text-white"
-              href="/start?source_channel=instagram_ad_click&source_platform=instagram&campaign_id=ivf_over40&creative=story_a"
+              href="/start?source_channel=website_widget&source_platform=website"
             >
               Ask a question
             </Link>

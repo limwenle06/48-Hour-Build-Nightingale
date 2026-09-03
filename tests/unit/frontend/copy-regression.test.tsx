@@ -19,6 +19,12 @@ describe("surgical copy", () => {
     expect(
       screen.getByText("Urgent matters interrupt everything else."),
     ).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Ask a question" }),
+    ).toHaveAttribute(
+      "href",
+      "/start?source_channel=website_widget&source_platform=website",
+    );
   });
   it("uses the approved header promise", () => {
     render(

@@ -2,18 +2,20 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "./api-client";
-import type { Message, SourceChannel, SourcePlatform } from "./frontend-types";
-import { openingCopy } from "@/config/channel-openings";
+import type { Message } from "./frontend-types";
+import {
+  canonicalSourceChannel,
+  canonicalSourcePlatform,
+  openingCopy,
+} from "@/config/channel-openings";
 import { guestStarterPrompts } from "@/config/starter-prompts";
 import { ChatThread, EmergencyWarning, InlineError, JourneySteps } from "./ui";
 
 export function GuestJourney() {
   const params = useSearchParams(),
     router = useRouter();
-  const source_channel = (params.get("source_channel") ||
-      "website_widget") as SourceChannel,
-    source_platform = (params.get("source_platform") ||
-      "website") as SourcePlatform;
+  const source_channel = canonicalSourceChannel(params.get("source_channel")),
+    source_platform = canonicalSourcePlatform(params.get("source_platform"));
   const [leadId, setLeadId] = useState<string | null>(null),
     [opening, setOpening] = useState(
       "You can ask a general question first — no account needed.",

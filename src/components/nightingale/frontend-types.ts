@@ -1,7 +1,17 @@
-import type { IdentityLevel, SourceChannel } from "@/config/channel-openings";
-export type { IdentityLevel, SourceChannel };
-export type SourcePlatform =
-  "clinic" | "instagram" | "tiktok" | "facebook" | "website" | "other";
+import type {
+  IdentityLevel,
+  SourceChannel,
+  SourcePlatform,
+} from "@/config/channel-openings";
+export type { IdentityLevel, SourceChannel, SourcePlatform };
+export type FunnelEventName =
+  | "visitor"
+  | "conversation_started"
+  | "value_event"
+  | "auth_started"
+  | "consented"
+  | "patient_created"
+  | "escalation_sent";
 export type RiskLevel = "low" | "medium" | "high";
 export type ProcessingStatus = "success" | "blocked" | "failed";
 export type MemoryType =
@@ -77,7 +87,7 @@ export interface WarmLead {
   lead_session_id: string;
   source_channel: SourceChannel;
   identity_level: IdentityLevel;
-  funnel_stage: string;
+  funnel_stage: FunnelEventName;
   top_concern: string | null;
   warm_lead_score: number;
   score_reasons: string[];
@@ -114,7 +124,7 @@ export interface Escalation {
     risk_level: RiskLevel;
     risk_reason: string;
     confidence: "low" | "med" | "high";
-    risk_provenance: string;
+    risk_provenance: RiskAssessment["risk_provenance"];
     escalation_required: boolean;
   };
   status: "pending" | "in_review" | "responded" | "closed";
