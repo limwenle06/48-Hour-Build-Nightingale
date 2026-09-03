@@ -2,14 +2,24 @@ NIGHTINGALE ATTRIBUTION
 
 CURRENT IMPLEMENTATION DEPENDENCIES
 
+- Next.js (`next`), MIT license.
+  Used for the web application and server API routes.
+- React and React DOM (`react`, `react-dom`), MIT license.
+  Used for the patient and staff user interfaces.
 - OpenAI JavaScript/TypeScript SDK (`openai`), Apache-2.0 license.
   Used for the server-side provider adapter. No OpenAI code or key is exposed to the browser.
 - Zod (`zod`), MIT license.
   Used for runtime validation and shared data schemas.
+- Tailwind CSS (`tailwindcss`), MIT license.
+  Used for styling the web interface.
 - TypeScript (`typescript`), Apache-2.0 license.
   Used for static type checking.
 - Vitest (`vitest`), MIT license.
   Used for automated tests.
+- Testing Library (`@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`), MIT license.
+  Used for frontend behaviour tests.
+- jsdom (`jsdom`), MIT license.
+  Used to provide a browser-like test environment.
 - Node.js type definitions (`@types/node`), MIT license.
   Used for TypeScript checking of server-side Node.js APIs.
 

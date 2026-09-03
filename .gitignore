@@ -18,3 +18,18 @@ Thumbs.db
 # Supabase local state
 supabase/.branches/
 supabase/.temp/
+
+# Local IDE files
+.idea/
+*.iml
+
+# Python / Flask prototype local files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+instance/
+
+# macOS
+.DS_Store

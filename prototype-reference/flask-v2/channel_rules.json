@@ -1,0 +1,23 @@
+{
+  "staff_referral": {
+    "identity_levels": ["staff_context"],
+    "opening": "Your care team shared this topic so you can continue without starting over: {context}",
+    "weight": 25
+  },
+  "social_comment": {
+    "identity_levels": ["social_handle"],
+    "opening": "Thanks for reaching out from {platform}. I can help you put your question into words privately before you decide what to share.",
+    "weight": 15
+  },
+  "instagram_ad_click": {
+    "identity_levels": ["anonymous"],
+    "opening": "You arrived from our {campaign} information post. Ask a general question first—no account is needed.",
+    "weight": 10
+  },
+  "website_widget": {
+    "identity_levels": ["anonymous"],
+    "opening": "I can explain general information about {context} and help prepare questions for a clinician—without asking you to sign up first.",
+    "weight": 5
+  }
+}
+

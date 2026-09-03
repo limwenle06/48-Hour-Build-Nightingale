@@ -1,38 +1,36 @@
-# Nightingale
+# Nightingale — secure first-touch-to-care PWA
 
-Nightingale is a 48-hour healthcare software prototype focused on trusted acquisition, consented patient intake, Living Memory with provenance, deterministic risk gating, and human escalation. It is an AI assistant, not a doctor or diagnostic system.
+Nightingale is a 48-hour healthcare software prototype for turning a first clinic question into a consented patient conversation. It is an AI assistant, not a doctor or diagnostic system.
 
-## Status
+`Acquisition → LeadSession → guest value → trust transition → authentication + consent → PatientSession → Living Profile → risk gate → clinician escalation`
 
-The Person 3 AI and safety module is implemented and tested. Frontend, backend persistence, authentication, authorization, and full application integration are separate team responsibilities and may still be in progress.
+The repository currently combines the tested Person 1 frontend with the tested Person 3 AI and safety module. Person 2 backend persistence, authentication, authorization, and API integration are the remaining implementation work.
 
-All shared names, schemas, API boundaries, ownership rules, and safety requirements are defined in [`TEAM_CONTRACT.md`](TEAM_CONTRACT.md).
+All names, schemas, API boundaries, ownership rules, and safety requirements are defined in [`TEAM_CONTRACT.md`](TEAM_CONTRACT.md).
 
-## Setup
+## Quick start
 
 Install a recent Node.js release with npm, then run:
 
 ```bash
 npm install
+npm run dev
 ```
 
-Automated tests use a fake provider and do not require an API key.
+Open <http://localhost:3000>. The frontend uses clearly labelled synthetic mock data by default.
 
-For optional server-side OpenAI use, copy `.env.example` to the server environment and configure:
+To make the frontend call the real Person 2 API routes, set this server environment value:
 
 ```text
-LLM_PROVIDER=openai
-LLM_MODEL=<an OpenAI model available to the project>
-LLM_API_KEY=<server-side secret>
+NEXT_PUBLIC_NIGHTINGALE_MOCK=false
 ```
 
-Never commit `.env.local` or expose `LLM_API_KEY` in browser code.
-
-## Tests
+## Verification
 
 ```bash
 npm test
 npm run typecheck
+npm run build
 ```
 
 If Windows PowerShell blocks `npm.ps1`, use:
@@ -40,7 +38,20 @@ If Windows PowerShell blocks `npm.ps1`, use:
 ```powershell
 npm.cmd test
 npm.cmd run typecheck
+npm.cmd run build
 ```
+
+## Optional OpenAI provider
+
+Automated tests use a fake provider and do not require an API key. For optional server-side OpenAI use, copy `.env.example` to `.env.local` and configure:
+
+```text
+LLM_PROVIDER=openai
+LLM_MODEL=<an OpenAI model available to the project>
+LLM_API_KEY=<server-side secret>
+```
+
+Never commit `.env.local`, expose `LLM_API_KEY` in browser code, or use real patient data in development or demonstrations.
 
 ## Person 3 processing flow
 
@@ -54,25 +65,42 @@ Patient message
   -> runtime-validated result for the backend
 ```
 
-The backend entry point is `src/server/ai/process-patient-message.ts`. Person 2 must call it only after authentication, patient ownership, clinic, and healthcare-consent checks. The function returns structured proposals; it does not claim or perform database persistence.
+The backend entry point is `src/server/ai/process-patient-message.ts`. Person 2 must call it only after authentication, patient ownership, clinic, and healthcare-consent checks. It returns structured proposals; Person 2 is responsible for database persistence.
 
-## Security and failure behaviour
+## Safety and failure behaviour
 
-- Raw patient text is redacted before any provider call.
+- Safety screening must happen before every normal response.
+- Raw patient text is redacted before any external provider call.
 - High- and medium-risk messages cannot receive a normal AI response.
-- Redaction failure blocks provider use.
+- Redaction failure blocks external provider use.
 - Provider errors, invalid output, and timeouts use deterministic safe fallbacks.
-- Memory corrections retain the originating message ID and superseded item ID.
-- Escalations contain concise deterministic summaries and message provenance.
-- Recent messages are not sent to the provider in the core prototype.
-- Development and demonstration must use synthetic patient data only.
+- Memory corrections retain message provenance and the superseded item ID.
+- High-risk concerns show emergency action before signup or conversion prompts.
+- All demo content and patient information must be synthetic.
 
-## Run the application
+## Frontend demo route
 
-The complete PWA becomes runnable after the frontend and backend are integrated. This branch currently provides the tested Person 3 module rather than a standalone user interface.
+1. Start a guest question from one of the synthetic acquisition channels.
+2. Continue securely to show the trust and consent transition.
+3. Open the patient chat and Living Profile.
+4. Use the synthetic symptom, medication correction, human-review, and emergency examples.
+5. Open the staff dashboard to show warm leads, escalations, funnel data, and a staff referral link.
 
-## Team ownership
+Mock behaviour is only for demonstrating the interface. Real storage, login, consent, clinic isolation, and staff access depend on the Person 2 backend.
 
-- Person 1: frontend, product journey, acquisition UX, and staff-facing UI.
-- Person 2: backend, database, authentication, authorization, persistence, and security.
-- Person 3: AI, PHI redaction, safety, risk gating, Living Memory, provenance, and escalation generation.
+## Repository map
+
+```text
+src/app/                         Next.js pages
+src/components/nightingale/     Patient and staff interface
+src/config/                      Acquisition channel rules and prompts
+src/contracts/                   Shared runtime-validated AI contracts
+src/server/ai/                   Safe response orchestration
+src/server/safety/               PHI redaction and deterministic risk rules
+src/server/memory/               Living Memory extraction and mutation
+src/server/escalation/           Clinician escalation summary generation
+tests/unit/frontend/             Person 1 frontend tests
+tests/unit/ai-safety/            Person 3 module tests
+tests/integration/               Person 3 processing-flow tests
+prototype-reference/flask-v2/    Archived Flask prototype reference only
+```

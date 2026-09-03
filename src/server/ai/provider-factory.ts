@@ -15,7 +15,11 @@ export interface LlmEnvironment {
 }
 
 export function createLlmProvider(
-  environment: LlmEnvironment = process.env,
+  environment: LlmEnvironment = {
+    LLM_PROVIDER: process.env.LLM_PROVIDER,
+    LLM_MODEL: process.env.LLM_MODEL,
+    LLM_API_KEY: process.env.LLM_API_KEY,
+  },
 ): LlmProvider {
   const provider = environment.LLM_PROVIDER?.trim().toLowerCase();
   const model = environment.LLM_MODEL?.trim();
