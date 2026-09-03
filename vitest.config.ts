@@ -18,6 +18,7 @@ export default defineConfig({
           environment: "node",
           include: [
             "tests/unit/ai-safety/**/*.test.ts",
+            "tests/unit/backend/**/*.test.ts",
             "tests/integration/**/*.test.ts",
           ],
         },
