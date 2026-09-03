@@ -25,6 +25,21 @@ describe("synthetic frontend adapter", () => {
     expect((await api.getProfile()).items).toEqual([]);
   });
 
+  it("answers both demo trust-question wordings precisely", async () => {
+    const { api } = await import("@/components/nightingale/api-client");
+    const lead = await api.createLead({
+      clinic_id: "clinic_demo",
+      source_channel: "website_widget",
+      source_platform: "website",
+    });
+    for (const question of ["Are you a real doctor?", "Is this a real doctor?"]) {
+      const result = await api.sendGuest(lead.lead_session_id, question);
+      expect(result.assistant_message.content).toContain("Nightingale AI");
+      expect(result.assistant_message.content).toContain("not a doctor");
+      expect(result.assistant_message.content).toMatch(/nurse|clinician/);
+    }
+  });
+
   it("preserves exact guest messages and attribution through mock conversion", async () => {
     const { api } = await import("@/components/nightingale/api-client");
     const lead = await api.createLead({

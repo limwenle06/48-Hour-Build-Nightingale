@@ -25,8 +25,15 @@ describe("service worker privacy boundary", () => {
   });
 
   it("replaces the earlier broad runtime cache", () => {
-    expect(publicWorker).toContain('"nightingale-public-shell-v2"');
+    expect(publicWorker).toContain('"nightingale-public-shell-v3"');
     expect(publicWorker).toContain("caches.delete(key)");
     expect(publicWorker).not.toContain('"nightingale-shell-v1"');
+  });
+
+  it("uses the network before its public-shell fallback", () => {
+    expect(publicWorker).toContain("fetch(event.request)");
+    expect(publicWorker).toContain(".catch(() => caches.match(event.request))");
+    expect(publicWorker).toContain("self.skipWaiting()");
+    expect(publicWorker).toContain("self.clients.claim()");
   });
 });

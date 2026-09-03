@@ -308,7 +308,16 @@ export function syntheticGuestRiskFor(input: string): RiskLevel {
 export const syntheticGuestReplies: Record<string, string> = {
   "are you a real doctor?":
     "No. I’m Nightingale AI, not a doctor. I help collect concerns and provide general information for Demo Women’s Clinic. A nurse or clinician becomes involved when human judgment or safety review is needed.",
+  "are you a real doctor":
+    "No. I’m Nightingale AI, not a doctor. I help collect concerns and provide general information for Demo Women’s Clinic. A nurse or clinician becomes involved when human judgment or safety review is needed.",
+  "is this a real doctor?":
+    "No. I’m Nightingale AI, not a doctor. I help collect concerns and provide general information for Demo Women’s Clinic. A nurse or clinician becomes involved when human judgment or safety review is needed.",
+  "is this a real doctor":
+    "No. I’m Nightingale AI, not a doctor. I help collect concerns and provide general information for Demo Women’s Clinic. A nurse or clinician becomes involved when human judgment or safety review is needed.",
   "my stomach hurts.": "Got it. When did it start?",
+  "my stomach hurts": "Got it. When did it start?",
   "it started last week.":
+    "Got it — last week. Is it getting better, worse, or staying the same?",
+  "it started last week":
     "Got it — last week. Is it getting better, worse, or staying the same?",
 };

@@ -23,9 +23,9 @@ Send: `Is this a real doctor?`
 
 “The assistant clearly says it is AI, not a doctor, that clinic staff can review sent concerns, and that it does not replace emergency care.”
 
-Then send: `I have been taking Advil for headaches.`
+Then send: `My stomach hurts.`
 
-Show the useful non-diagnostic reply and select **Continue securely**.
+Show the useful follow-up question and select **Continue securely**.
 
 **0:45–1:15 — Authentication, consent, and continuity**
 
@@ -33,9 +33,9 @@ Use the synthetic patient details. Accept healthcare consent and continue.
 
 “Authentication and healthcare consent are separate. The backend preserves the original acquisition and guest Message IDs during conversion, so provenance is not lost.”
 
-Open the patient chat and Living Profile. Send: `I stopped taking Advil.`
+Open **Developer demo tools**, select **Symptoms profile**, then press **Send**.
 
-Show that the new profile revision supersedes the older medication state rather than deleting its evidence.
+Show the structured complaint, symptoms, timeline, medication, allergy, and Message provenance. Explain that the tested backend creates a new provenance-linked revision instead of overwriting history when a fact is corrected.
 
 **1:15–1:50 — Safety and human handoff**
 
@@ -47,7 +47,7 @@ Choose **Send to Nurse/Clinic**.
 
 “The success message appears only after the escalation is stored. The case snapshots the risk, profile, attribution, and message provenance.”
 
-If time allows, demonstrate: `I have severe chest pain and cannot breathe.` Point out the immediate **Call 999 now** action and say not to wait for Nightingale or the clinic.
+If time allows, select **High emergency** in the developer tools and press **Send**. Point out the immediate **Call 999 now** action and say not to wait for Nightingale or the clinic.
 
 **1:50–2:30 — Staff workspace**
 

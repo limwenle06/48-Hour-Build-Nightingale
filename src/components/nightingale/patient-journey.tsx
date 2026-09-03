@@ -35,6 +35,9 @@ export function PatientJourney() {
     [processing, setProcessing] = useState<ProcessingStatus>("success"),
     [handoffAvailable, setHandoffAvailable] = useState(false),
     [handoff, setHandoff] = useState<HandoffState>("idle"),
+    [expectedResponseWindow, setExpectedResponseWindow] = useState<string | null>(
+      null,
+    ),
     [text, setText] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null),
@@ -61,6 +64,7 @@ export function PatientJourney() {
       setProfile([]);
       setRisk(null);
       setLatchedRisk(null);
+      setExpectedResponseWindow(null);
       setAuthenticated(false);
     };
     window.addEventListener("nightingale-demo-reset", reset);
@@ -109,11 +113,12 @@ export function PatientJourney() {
     setHandoff("sending");
     setError(null);
     try {
-      await api.createEscalation(
+      const result = await api.createEscalation(
         patientSessionId,
         trigger.message_id,
         trigger.risk_assessment_id,
       );
+      setExpectedResponseWindow(result.expected_response_window);
       setHandoff("success");
     } catch (cause) {
       setHandoff("failed");
@@ -237,6 +242,8 @@ export function PatientJourney() {
                 : "Sent to Nurse/Clinic."}
               {displayRisk?.risk_level === "high" &&
                 " Do not wait for a clinic reply — call 999 now."}
+              {displayRisk?.risk_level !== "high" && expectedResponseWindow &&
+                ` Expected clinic response: ${expectedResponseWindow}.`}
             </div>
           )}
           {handoff === "failed" && (

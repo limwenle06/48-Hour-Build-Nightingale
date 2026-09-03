@@ -12,7 +12,13 @@ test("guest_to_patient_conversion and escalation_payload", async ({ page }) => {
   );
   await expect(page.getByText("What’s bothering you?")).toBeVisible();
 
-  await page.getByRole("button", { name: "I have a private question." }).click();
+  await page.getByLabel("Your question").fill("Is this a real doctor?");
+  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(page.getByText(/Nightingale AI, not a doctor/)).toBeVisible();
+
+  await page.getByLabel("Your question").fill("My stomach hurts.");
+  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(page.getByText("Got it. When did it start?")).toBeVisible();
   await expect(page.getByText("Continue without repeating yourself.")).toBeVisible();
   await page.getByRole("button", { name: "Continue securely" }).click();
 
@@ -23,6 +29,10 @@ test("guest_to_patient_conversion and escalation_payload", async ({ page }) => {
   await expect(page.getByText("Developer demo tools")).toBeVisible();
 
   await page.getByText("Developer demo tools").click();
+  await page.getByRole("button", { name: "Symptoms profile" }).click();
+  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(page.getByText("Persistent cough")).toBeVisible();
+
   await page.getByRole("button", { name: "Medium review" }).click();
   await page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(
@@ -30,6 +40,7 @@ test("guest_to_patient_conversion and escalation_payload", async ({ page }) => {
   ).toBeVisible();
   await page.getByRole("button", { name: "Send to Nurse/Clinic" }).click();
   await expect(page.getByText(/Demo clinic alert recorded/)).toBeVisible();
+  await expect(page.getByText(/Expected clinic response: 12-18 hours/)).toBeVisible();
 
   await page.goto("/staff/sign-in");
   await page.getByRole("button", { name: "Sign in" }).click();

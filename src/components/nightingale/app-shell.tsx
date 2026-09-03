@@ -8,8 +8,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname(),
     router = useRouter();
   useEffect(() => {
-    if ("serviceWorker" in navigator)
+    if (!("serviceWorker" in navigator)) return;
+    if (process.env.NODE_ENV === "production") {
       navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+      return;
+    }
+    navigator.serviceWorker
+      .getRegistrations()
+      .then((registrations) =>
+        Promise.all(registrations.map((registration) => registration.unregister())),
+      )
+      .catch(() => undefined);
+    if ("caches" in window)
+      caches
+        .keys()
+        .then((keys) =>
+          Promise.all(
+            keys
+              .filter((key) => key.startsWith("nightingale-public-shell-"))
+              .map((key) => caches.delete(key)),
+          ),
+        )
+        .catch(() => undefined);
   }, []);
   function end() {
     api.endDemoSession();

@@ -60,6 +60,12 @@ describe("PatientJourney synthetic safety states", () => {
     expect(
       screen.queryByRole("link", { name: /Call 999/ }),
     ).not.toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Send to Nurse/Clinic" }),
+    );
+    expect(
+      await screen.findByText(/Expected clinic response: 12-18 hours/),
+    ).toBeVisible();
   });
 
   it("restores a converted guest message on remount", async () => {
