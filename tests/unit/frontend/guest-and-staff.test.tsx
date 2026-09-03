@@ -14,6 +14,7 @@ import { GuestJourney } from "@/components/nightingale/guest-journey";
 import {
   CaseCard,
   FunnelChart,
+  FunnelSummary,
 } from "@/components/nightingale/staff-dashboard";
 import { JourneySteps } from "@/components/nightingale/ui";
 import { StaffSignIn } from "@/components/nightingale/staff-sign-in";
@@ -73,6 +74,33 @@ describe("guest and clinic product journey", () => {
     expect(screen.getByText("Triggering concern")).toBeVisible();
     expect(screen.queryByText(/\{\s*"triage_summary"/)).not.toBeInTheDocument();
   });
+  it("shows synthetic contact and toggles an unsaved contacted status locally", async () => {
+    const user = userEvent.setup();
+    const originalStatus = escalation.status;
+    const originalRisk = escalation.risk_context.risk_level;
+    render(<CaseCard escalation={escalation} synthetic />);
+    await user.click(screen.getByText("View case"));
+    expect(screen.getByText("Patient contact")).toBeVisible();
+    expect(screen.getByText("patient@example.test")).toBeVisible();
+    expect(screen.getByText("+60 12-345 6789")).toBeVisible();
+    const contacted = screen.getByRole("checkbox", {
+      name: /Patient contacted/,
+    });
+    expect(contacted).not.toBeChecked();
+    await user.click(contacted);
+    expect(contacted).toBeChecked();
+    await user.click(contacted);
+    expect(contacted).not.toBeChecked();
+    expect(escalation.status).toBe(originalStatus);
+    expect(escalation.risk_context.risk_level).toBe(originalRisk);
+    expect(screen.getByText("Demo status · not saved")).toBeVisible();
+  });
+  it("hides synthetic contact in connected case presentation", async () => {
+    const user = userEvent.setup();
+    render(<CaseCard escalation={escalation} />);
+    await user.click(screen.getByText("View case"));
+    expect(screen.queryByText("patient@example.test")).not.toBeInTheDocument();
+  });
   it("renders a supplied-data chart and labels synthetic metrics", () => {
     const metrics: FunnelMetric[] = [
       {
@@ -89,6 +117,48 @@ describe("guest and clinic product journey", () => {
         /10 visitors, 7 value events, 3 patient conversions, 1 escalations/,
       ),
     ).toBeVisible();
+    expect(screen.getByText("Synthetic metrics")).toBeVisible();
+  });
+  it("summarises every supplied channel and derives conversion percentages", () => {
+    const metrics: FunnelMetric[] = [
+      {
+        source_channel: "staff_referral",
+        visitors: 20,
+        value_events: 14,
+        patient_conversions: 10,
+        escalations: 1,
+      },
+      {
+        source_channel: "social_comment",
+        visitors: 10,
+        value_events: 7,
+        patient_conversions: 3,
+        escalations: 1,
+      },
+      {
+        source_channel: "instagram_ad_click",
+        visitors: 8,
+        value_events: 5,
+        patient_conversions: 2,
+        escalations: 0,
+      },
+      {
+        source_channel: "website_widget",
+        visitors: 0,
+        value_events: 0,
+        patient_conversions: 0,
+        escalations: 0,
+      },
+    ];
+    render(<FunnelSummary metrics={metrics} synthetic />);
+    expect(screen.getByText("staff referral")).toBeVisible();
+    expect(screen.getByText("social comment")).toBeVisible();
+    expect(screen.getByText("instagram ad click")).toBeVisible();
+    expect(screen.getByText("website widget")).toBeVisible();
+    expect(screen.getByText("50%")).toBeVisible();
+    expect(screen.getByText("30%")).toBeVisible();
+    expect(screen.getByText("25%")).toBeVisible();
+    expect(screen.getByText("0%")).toBeVisible();
     expect(screen.getByText("Synthetic metrics")).toBeVisible();
   });
 });

@@ -12,6 +12,7 @@ import type {
   MemoryItem,
   Message,
 } from "@/components/nightingale/frontend-types";
+import { syntheticScenarioFor } from "@/components/nightingale/mock-scenarios";
 
 const msg: Message = {
   message_id: "message-1",
@@ -97,5 +98,30 @@ describe("patient presentation", () => {
   it("always renders the required emergency warning", () => {
     render(<EmergencyWarning />);
     expect(screen.getByText(/999 for Emergency Services/)).toBeVisible();
+  });
+  it("uses only canonical memory types and statuses in the Symptoms fixture", () => {
+    const scenario = syntheticScenarioFor("Demo: symptoms profile");
+    const types = new Set(scenario?.profile_items?.map((item) => item.type));
+    const statuses = new Set(
+      scenario?.profile_items?.map((item) => item.status),
+    );
+    expect(types).toEqual(
+      new Set([
+        "chief_complaint",
+        "symptom",
+        "symptom_timeline",
+        "medication",
+        "allergy",
+      ]),
+    );
+    expect(statuses).toEqual(new Set(["active"]));
+  });
+  it("keeps the existing populated-profile fixture available", () => {
+    const scenario = syntheticScenarioFor("Demo: populated profile");
+    expect(scenario?.label).toBe("Populated profile");
+    expect(scenario?.profile_items?.length).toBeGreaterThan(0);
+    expect(
+      scenario?.profile_items?.some((item) => item.type === "medication"),
+    ).toBe(true);
   });
 });

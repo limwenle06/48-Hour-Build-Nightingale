@@ -128,6 +128,19 @@ describe("PatientJourney synthetic safety states", () => {
     ).toBeDisabled();
   });
 
+  it("loads the explicit Symptoms profile fixture into Living Profile", async () => {
+    const user = userEvent.setup();
+    await openPatient();
+    await user.click(screen.getByRole("button", { name: "Symptoms profile" }));
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Persistent cough")).toBeVisible();
+    expect(screen.getByText("Dry cough")).toBeVisible();
+    expect(screen.getByText("Sore throat")).toBeVisible();
+    expect(screen.getByText("Started 3 days ago")).toBeVisible();
+    expect(screen.getByText("Paracetamol")).toBeVisible();
+    expect(screen.getByText("Penicillin")).toBeVisible();
+  });
+
   it("keeps a HIGH warning latched after a later ordinary message", async () => {
     const user = userEvent.setup();
     await openPatient();

@@ -117,7 +117,11 @@ export function StaffDashboard() {
         ) : escalations.length ? (
           <div className="mt-4 grid gap-3">
             {escalations.map((e) => (
-              <CaseCard key={e.escalation_id} escalation={e} />
+              <CaseCard
+                key={e.escalation_id}
+                escalation={e}
+                synthetic={api.mockMode}
+              />
             ))}
           </div>
         ) : (
@@ -160,6 +164,7 @@ export function StaffDashboard() {
           </article>
         ))}
       </section>
+      <FunnelSummary metrics={metrics} synthetic={api.mockMode} />
       <FunnelChart metrics={metrics} synthetic={api.mockMode} />
       <section
         id="referral"
@@ -236,7 +241,14 @@ function RiskTag({ level }: { level: "low" | "medium" | "high" }) {
     </span>
   );
 }
-export function CaseCard({ escalation: e }: { escalation: Escalation }) {
+export function CaseCard({
+  escalation: e,
+  synthetic = false,
+}: {
+  escalation: Escalation;
+  synthetic?: boolean;
+}) {
+  const [patientContacted, setPatientContacted] = useState(false);
   return (
     <article className="rounded-2xl border border-line p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -298,6 +310,39 @@ export function CaseCard({ escalation: e }: { escalation: Escalation }) {
               ))}
             </ul>
           </CaseSection>
+          {synthetic && (
+            <CaseSection title="Patient contact">
+              <span className="mb-2 inline-block rounded-full bg-sky-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-sky-900">
+                Synthetic demo data
+              </span>
+              <dl className="grid gap-2 text-sm">
+                <div>
+                  <dt className="font-semibold text-slate-500">Email</dt>
+                  <dd className="break-all">patient@example.test</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-slate-500">Phone</dt>
+                  <dd>+60 12-345 6789</dd>
+                </div>
+              </dl>
+              <label className="mt-4 flex cursor-pointer items-start gap-2 rounded-xl border border-line bg-slate-50 p-3 text-sm font-semibold">
+                <input
+                  type="checkbox"
+                  checked={patientContacted}
+                  onChange={(event) =>
+                    setPatientContacted(event.target.checked)
+                  }
+                  className="mt-0.5"
+                />
+                <span>
+                  Patient contacted
+                  <small className="block font-normal text-slate-500">
+                    Demo status · not saved
+                  </small>
+                </span>
+              </label>
+            </CaseSection>
+          )}
           {e.clinician_response && (
             <CaseSection title="Clinician response">
               <p>{e.clinician_response.message}</p>
@@ -321,6 +366,66 @@ function CaseSection({
         {title}
       </h4>
       {children}
+    </section>
+  );
+}
+
+export function FunnelSummary({
+  metrics,
+  synthetic,
+}: {
+  metrics: FunnelMetric[];
+  synthetic: boolean;
+}) {
+  if (!metrics.length) return null;
+  return (
+    <section className="mb-5 rounded-2xl border border-line bg-white p-5 shadow-soft md:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-xl font-bold">Channel summary</h2>
+        {synthetic && (
+          <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-bold">
+            Synthetic metrics
+          </span>
+        )}
+      </div>
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full min-w-[30rem] text-left text-sm">
+          <thead className="border-b border-line text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="pb-2 pr-4">Channel</th>
+              <th className="pb-2 pr-4 text-right">Visitors</th>
+              <th className="pb-2 pr-4 text-right">Patients</th>
+              <th className="pb-2 text-right">Conversion</th>
+            </tr>
+          </thead>
+          <tbody>
+            {metrics.map((metric) => {
+              const conversion = metric.visitors
+                ? Math.round(
+                    (metric.patient_conversions / metric.visitors) * 100,
+                  )
+                : 0;
+              return (
+                <tr
+                  key={metric.source_channel}
+                  className="border-b border-line last:border-0"
+                >
+                  <th className="py-3 pr-4 font-semibold capitalize">
+                    {metric.source_channel.replaceAll("_", " ")}
+                  </th>
+                  <td className="py-3 pr-4 text-right">{metric.visitors}</td>
+                  <td className="py-3 pr-4 text-right">
+                    {metric.patient_conversions}
+                  </td>
+                  <td className="py-3 text-right font-bold text-teal">
+                    {conversion}%
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }
