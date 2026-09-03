@@ -4,7 +4,10 @@ import { z } from "zod";
 import type { LeadSessionRequest } from "@/server/guest/schemas";
 
 const uuidSchema = z.string().uuid();
-const timestampSchema = z.string().datetime({ offset: true });
+const timestampSchema = z
+  .string()
+  .datetime({ offset: true })
+  .transform((value) => new Date(value).toISOString());
 const sourceChannelSchema = z.enum([
   "staff_referral",
   "social_comment",

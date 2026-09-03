@@ -87,4 +87,40 @@ describe("contracted API boundary", () => {
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   });
+
+  it("uses the contracted staff session and live metrics endpoints", async () => {
+    vi.stubEnv("NEXT_PUBLIC_NIGHTINGALE_MOCK", "false");
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: { metrics: [] },
+        request_id: "request-3",
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { api } = await import("@/components/nightingale/api-client");
+
+    await api.authenticateStaff("nurse@example.test", "Secret123!");
+    await api.getFunnelMetrics();
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "/api/staff/auth/session",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          action: "sign_in",
+          email: "nurse@example.test",
+          password: "Secret123!",
+        }),
+      }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/api/staff/funnel-metrics",
+      expect.any(Object),
+    );
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
 });

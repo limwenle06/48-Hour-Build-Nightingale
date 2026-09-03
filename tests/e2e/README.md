@@ -2,4 +2,4 @@
 
 **Shared ownership:** Persons 1, 2, and 3
 
-Will implement later. The core acquisition-to-escalation vertical slice belongs here.
+The final manual connected check follows `docs/SUPABASE_SETUP.md`: acquisition → guest value → verified patient → healthcare consent → conversion → patient message → Living Profile → escalation → nurse queue. Automated browser coverage is deferred until a repeatable local Supabase runtime is available; unit/integration tests own the deterministic challenge build.

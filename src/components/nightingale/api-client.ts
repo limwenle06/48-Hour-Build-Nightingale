@@ -249,6 +249,28 @@ export const api = {
       patient: { patient_id: getState().patient_id },
     };
   },
+  async authenticateStaff(email: string, password: string) {
+    if (!MOCK)
+      return request<{
+        authenticated: boolean;
+        staff_user: { role: "staff" | "nurse" | "clinician" } | null;
+      }>("/api/staff/auth/session", {
+        method: "POST",
+        body: JSON.stringify({ action: "sign_in", email, password }),
+      });
+    return {
+      authenticated: true,
+      staff_user: { role: "nurse" as const },
+    };
+  },
+  async signOutStaff() {
+    if (!MOCK)
+      return request("/api/staff/auth/session", {
+        method: "POST",
+        body: JSON.stringify({ action: "sign_out" }),
+      });
+    return { authenticated: false, staff_user: null };
+  },
   async consentAndConvert(lead_session_id: string): Promise<{
     patient: { patient_id: string };
     patient_session: { patient_session_id: string };
@@ -531,8 +553,13 @@ export const api = {
       referral_url: `${window.location.origin}/start?source_channel=staff_referral&source_platform=clinic&referral_token=synthetic-demo-token`,
     };
   },
-  getFunnelMetrics(): FunnelMetric[] {
-    if (!MOCK) return [];
+  async getFunnelMetrics(): Promise<FunnelMetric[]> {
+    if (!MOCK)
+      return (
+        await request<{ metrics: FunnelMetric[] }>(
+          "/api/staff/funnel-metrics",
+        )
+      ).metrics;
     return [
       {
         source_channel: "staff_referral",

@@ -1,6 +1,6 @@
 # Nightingale Team Contract
 
-**Contract version:** 0.3.0  
+**Contract version:** 0.4.0  
 **Status:** Active prototype contract  
 **Last updated:** 2026-09-03  
 **Applies to:** Frontend, backend, database, AI/safety, analytics, and tests
@@ -830,6 +830,20 @@ type Response = ApiSuccess<{
 }>;
 ```
 
+#### `POST /api/staff/auth/session`
+
+Auth: public for sign-in and current session for sign-out. Staff accounts are provisioned by the clinic; this endpoint never creates a staff account or assigns a role.
+
+```ts
+type Request =
+  | { action: "sign_in"; email: string; password: string }
+  | { action: "sign_out" };
+type Response = ApiSuccess<{
+  authenticated: boolean;
+  staff_user: StaffUser | null;
+}>;
+```
+
 #### `POST /api/lead-sessions`
 
 Auth: public. Creates or recovers a LeadSession and records `visitor`.
@@ -993,6 +1007,23 @@ type Response = ApiSuccess<{
 
 The raw referral token appears only in the newly generated URL response and MUST NOT be logged.
 
+#### `GET /api/staff/funnel-metrics`
+
+Auth: `staff | nurse | clinician`, same clinic. Values are calculated only from stored FunnelEvents in the returned UTC time window.
+
+```ts
+type Response = ApiSuccess<{
+  metrics: Array<{
+    source_channel: SourceChannel;
+    visitors: number;
+    value_events: number;
+    patient_conversions: number;
+    escalations: number;
+  }>;
+  window: { from: string; to: string };
+}>;
+```
+
 #### `POST /api/funnel-events`
 
 Auth: LeadSession recovery cookie or authenticated User as appropriate. Accepts UI-observed events only.
@@ -1143,6 +1174,7 @@ During the 48-hour build, approval in the team chat is sufficient. No developer 
 
 | Version | Date | Decision |
 |---|---|---|
+| 0.4.0 | 2026-09-03 | Added clinic-provisioned staff session and query-backed funnel-metrics API boundaries required by the connected staff interface. |
 | 0.3.0 | 2026-09-03 | Added recoverable guest messages and guest safety state to the lead/guest API responses so refresh recovery and pre-authentication emergency UI are explicit. |
 | 0.2.0 | 2026-09-03 | Added the patient authentication-session API boundary and aligned API error vocabulary with implemented authentication flows. |
 | 0.1.0 | 2026-09-01 | Initial prototype contract: modular monolith, shared entities/enums, API boundary, safety order, provenance, RBAC, and failure behavior. |

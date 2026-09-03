@@ -2,7 +2,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 const uuidSchema = z.string().uuid();
-const timestampSchema = z.string().datetime({ offset: true });
+const timestampSchema = z
+  .string()
+  .datetime({ offset: true })
+  .transform((value) => new Date(value).toISOString());
 
 const patientSchema = z.object({
   patient_id: uuidSchema,

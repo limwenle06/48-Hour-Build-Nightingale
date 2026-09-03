@@ -13,3 +13,7 @@ The database functions in `0002_auth_and_conversion.sql` provide the transaction
 No route reports conversion success until the database function has committed.
 
 `guest-repository.ts` is the equivalent boundary for pre-authentication activity. It creates or recovers LeadSessions, appends guest exchanges, records UI-observed funnel events, and runtime-validates every PostgreSQL result before it reaches the browser.
+
+`patient-repository.ts` begins authenticated patient messages, finalizes the structured AI/safety result, and loads the current Living Profile. Every database response is validated before it reaches an API route.
+
+`staff-repository.ts` is the runtime-validated boundary for staff roles, escalations, warm leads, referral creation, and funnel metrics. Role and clinic authorization are rechecked inside every privileged database function.

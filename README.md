@@ -4,7 +4,7 @@ Nightingale is a 48-hour healthcare software prototype for turning a first clini
 
 `Acquisition → LeadSession → guest value → trust transition → authentication + consent → PatientSession → Living Profile → risk gate → clinician escalation`
 
-The repository currently combines the tested Person 1 frontend, Person 3 AI/safety module, secure Supabase schema, patient authentication/consent/conversion, and the recoverable guest-session backend. Patient-message persistence and the staff backend remain to be integrated.
+The repository combines the tested Person 1 frontend, Person 3 AI/safety module, secure Supabase schema, recoverable guest journey, authentication/consent/conversion, authenticated patient messages and Living Profile, escalations, staff RBAC, referrals, and query-backed funnel metrics.
 
 All names, schemas, API boundaries, ownership rules, and safety requirements are defined in [`TEAM_CONTRACT.md`](TEAM_CONTRACT.md).
 
@@ -24,6 +24,8 @@ To make the frontend call the real Person 2 API routes, set this server environm
 ```text
 NEXT_PUBLIC_NIGHTINGALE_MOCK=false
 ```
+
+Follow [`docs/SUPABASE_SETUP.md`](docs/SUPABASE_SETUP.md) before using connected mode. The challenge demo should remain in labelled synthetic mock mode until the target project has passed that checklist.
 
 ## Verification
 
@@ -86,7 +88,7 @@ The backend entry point is `src/server/ai/process-patient-message.ts`. Person 2 
 4. Use the synthetic symptom, medication correction, human-review, and emergency examples.
 5. Open the staff dashboard to show warm leads, escalations, funnel data, and a staff referral link.
 
-Mock behaviour is only for demonstrating the interface. Connected LeadSession recovery, guest messages, login, consent, and conversion now use the Person 2 server boundaries. Patient-message persistence, clinic staff access, and live metrics are still incomplete.
+Mock behaviour is only for demonstrating the interface. The same UI has connected routes for LeadSession recovery, guest messages, patient/staff login, consent, conversion, patient processing, Living Profile updates, escalation sending, staff queues, referrals, and live funnel metrics.
 
 ## Repository map
 
@@ -100,6 +102,9 @@ src/server/safety/               PHI redaction and deterministic risk rules
 src/server/memory/               Living Memory extraction and mutation
 src/server/escalation/           Clinician escalation summary generation
 src/server/guest/                Guest validation and deterministic safety
+src/server/patient/              Patient request validation and API errors
+src/server/staff/                Staff validation, access errors, referral tokens
+src/server/services/             Authenticated workflow orchestration
 src/server/data/                 Runtime-validated Supabase persistence
 src/app/api/                     Next.js server API routes
 supabase/migrations/             Versioned transactional database changes

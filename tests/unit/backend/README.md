@@ -8,6 +8,10 @@
 
 `guest-journey-migration.test.ts`, `guest-repository.test.ts`, and `guest-safety-and-schemas.test.ts` check guest recovery, token/referral hashing, service-role function access, atomic guest persistence, safe funnel metadata, deterministic pre-authentication risk guidance, and runtime result validation.
 
+`patient-journey-migration.test.ts`, `patient-repository.test.ts`, `patient-message-service.test.ts`, and `patient-schemas.test.ts` check authenticated ownership and consent boundaries, burst rate limiting, idempotent processing persistence, conservative provider failure, current-profile selection, strict inputs, and runtime-validated patient results.
+
+`staff-and-escalation-migration.test.ts` and `staff-repository-and-schemas.test.ts` check clinic roles, consent-filtered escalation access, non-clinical lead scoring, query-backed metrics, referral-token hashing, strict inputs, and runtime result validation.
+
 Run it with the full suite:
 
 ```powershell

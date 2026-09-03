@@ -7,17 +7,24 @@ import { InlineError } from "./ui";
 export function StaffSignIn() {
   const router = useRouter(),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState<string | null>(null);
+    [error, setError] = useState<string | null>(null),
+    [email, setEmail] = useState(api.mockMode ? "nurse@example.test" : ""),
+    [password, setPassword] = useState(
+      api.mockMode ? "synthetic-demo" : "",
+    );
   async function submit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    if (api.mockMode) {
+    try {
+      await api.authenticateStaff(email, password);
       router.push("/staff");
-      return;
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : "Staff sign in failed.",
+      );
+      setBusy(false);
     }
-    setError("Staff authentication must be connected by the clinic backend.");
-    setBusy(false);
   }
   return (
     <section className="mx-auto max-w-md rounded-3xl border border-line bg-white p-7 shadow-soft">
@@ -36,7 +43,8 @@ export function StaffSignIn() {
           <input
             required
             type="email"
-            defaultValue={api.mockMode ? "nurse@example.test" : ""}
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
             className="mt-1 block w-full rounded-xl border border-line px-3 py-3 font-normal"
           />
         </label>
@@ -45,7 +53,8 @@ export function StaffSignIn() {
           <input
             required
             type="password"
-            defaultValue={api.mockMode ? "synthetic-demo" : ""}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
             className="mt-1 block w-full rounded-xl border border-line px-3 py-3 font-normal"
           />
         </label>

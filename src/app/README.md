@@ -3,4 +3,4 @@
 **Primary owner:** Person 1  
 **Backend route integration:** Person 2
 
-Will implement later. This folder will contain Next.js pages, layouts, and API route entry points.
+Contains the public guest, patient, and staff pages plus the Next.js API route entry points. UI pages call only Nightingale APIs. Protected routes verify Supabase sessions before invoking service-only persistence boundaries.

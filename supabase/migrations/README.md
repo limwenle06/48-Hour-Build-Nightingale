@@ -8,6 +8,12 @@
 
 `0003_guest_journey.sql` adds service-role-only functions for LeadSession creation/recovery, atomic guest and assistant messages, guest funnel events, and consent attribution. Recovery uses a sliding seven-day expiry and returns stored guest messages only after the HTTP-only credential is validated.
 
+`0004_patient_journey.sql` adds the authenticated patient-message transaction boundaries and current Living Profile query. It verifies ownership and current consent, limits message bursts, persists each message before processing, and atomically saves the validated risk result, safe reply, memory revisions, citations, and PHI-free audit metadata. Finalization is idempotent by patient message ID.
+
+`0005_staff_and_escalations.sql` adds clinic-provisioned staff-role resolution, patient escalation creation, the consent-filtered clinical queue, non-clinical warm leads, hashed-token staff referrals, and query-backed 30-day funnel metrics.
+
+`../seed.sql` inserts one clearly synthetic clinic for local or challenge-demo setup. It contains no user or patient records.
+
 The build uses text columns with database `CHECK` constraints for contract enums. This is easier to review and change during a short prototype than many PostgreSQL enum migrations while still rejecting invalid values.
 
 Rules:

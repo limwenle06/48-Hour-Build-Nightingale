@@ -1,11 +1,12 @@
 "use client";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { api } from "./api-client";
 import type { Escalation, FunnelMetric, WarmLead } from "./frontend-types";
 import { InlineError } from "./ui";
 
 export function StaffDashboard() {
+  const router = useRouter();
   const [leads, setLeads] = useState<WarmLead[]>([]),
     [escalations, setEscalations] = useState<Escalation[]>([]),
     [metrics, setMetrics] = useState<FunnelMetric[]>([]),
@@ -28,8 +29,20 @@ export function StaffDashboard() {
         ),
       )
       .finally(() => setLoading(false));
-    setMetrics(api.getFunnelMetrics());
+    api
+      .getFunnelMetrics()
+      .then(setMetrics)
+      .catch((e) => setError(e.message));
   }, []);
+  async function signOut() {
+    setError(null);
+    try {
+      await api.signOutStaff();
+      router.push("/staff/sign-in");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Sign out failed.");
+    }
+  }
   async function refer(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -62,12 +75,13 @@ export function StaffDashboard() {
           >
             Create referral
           </a>
-          <Link
-            href="/staff/sign-in"
+          <button
+            type="button"
+            onClick={signOut}
             className="rounded-xl border border-line px-4 py-3 font-semibold"
           >
             Sign out
-          </Link>
+          </button>
         </div>
       </header>
       <InlineError message={error} />
@@ -200,8 +214,8 @@ export function StaffDashboard() {
               {url}
             </a>
             <small className="mt-2 block text-slate-500">
-              Synthetic link. The URL contains an opaque demo token, not the
-              topic.
+              {api.mockMode ? "Synthetic link. " : ""}The URL contains an
+              opaque token, not the topic.
             </small>
           </div>
         )}

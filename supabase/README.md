@@ -4,7 +4,7 @@
 
 The Supabase PostgreSQL database is defined entirely by versioned files in `supabase/migrations/`.
 
-The first migration provides:
+The migration series provides:
 
 - all canonical Nightingale tables and UUID relationships;
 - hashed guest-recovery and staff-referral tokens;
@@ -17,11 +17,13 @@ Guests never query tables directly. A Next.js server route must validate the sec
 
 The guest routes persist only the token hash. They atomically create attributed LeadSessions, append guest/assistant messages, record authoritative funnel stages, and refresh the seven-day recovery window after valid activity.
 
+Patient routes persist one risk result for every patient-authored message and maintain append-only Living Profile revisions. Staff routes resolve clinic-provisioned roles, expose a consent-filtered nurse/clinician queue, calculate non-clinical lead scores and 30-day funnel metrics, and store only staff-referral token hashes.
+
 Authenticated browser clients receive read-only access to records allowed by RLS. All mutations go through server routes, where application authorization is checked again before the service-role client is used.
 
 Never place `SUPABASE_SERVICE_ROLE_KEY` in client code or a `NEXT_PUBLIC_` environment variable.
 
-Connected mode requires these values in `.env.local`:
+Connected mode requires these values in `.env.local`; follow the complete order in [`../docs/SUPABASE_SETUP.md`](../docs/SUPABASE_SETUP.md):
 
 ```text
 NEXT_PUBLIC_NIGHTINGALE_MOCK=false

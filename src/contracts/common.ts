@@ -1,7 +1,10 @@
 import { z } from "zod";
 
 export const uuidSchema = z.string().uuid();
-export const isoDateTimeSchema = z.string().datetime();
+export const isoDateTimeSchema = z
+  .string()
+  .datetime({ offset: true })
+  .transform((value) => new Date(value).toISOString());
 
 export const confidenceSchema = z.enum(["low", "med", "high"]);
 export type Confidence = z.infer<typeof confidenceSchema>;
