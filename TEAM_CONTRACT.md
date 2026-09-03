@@ -1140,17 +1140,17 @@ The Technical Brief must clearly document:
 
 Before the demo/release candidate is considered integrated:
 
-- [ ] Browser contains no privileged Supabase or LLM secrets.
-- [ ] Patient isolation and clinic isolation tests pass.
-- [ ] Consent is checked server-side before protected patient processing/access.
-- [ ] Raw PHI is absent from LLM captures and structured logs.
-- [ ] Deterministic high-risk fixtures pass.
-- [ ] Ambiguous/failed risk processing blocks normal advice.
-- [ ] Escalation success is shown only after persistence.
-- [ ] Guest conversion preserves Attribution and original provenance.
-- [ ] Live statistics are query-backed.
-- [ ] Emergency-services warning is visible beneath patient chat input.
-- [ ] Demo data is synthetic.
+- [x] Browser contains no privileged Supabase or LLM secrets.
+- [x] Patient isolation and clinic isolation tests pass.
+- [x] Consent is checked server-side before protected patient processing/access.
+- [x] Raw PHI is absent from LLM captures and structured logs.
+- [x] Deterministic high-risk fixtures pass.
+- [x] Ambiguous/failed risk processing blocks normal advice.
+- [x] Escalation success is shown only after persistence.
+- [x] Guest conversion preserves Attribution and original provenance.
+- [x] Live statistics are query-backed.
+- [x] Emergency-services warning is visible beneath patient chat input.
+- [x] Demo data is synthetic.
 
 ## 22. Contract version and change procedure
 

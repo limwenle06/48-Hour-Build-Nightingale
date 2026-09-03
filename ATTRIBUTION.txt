@@ -22,6 +22,8 @@ CURRENT IMPLEMENTATION DEPENDENCIES
   Used for frontend behaviour tests.
 - jsdom (`jsdom`), MIT license.
   Used to provide a browser-like test environment.
+- Playwright Test (`@playwright/test`), Apache-2.0 license.
+  Used for the synthetic acquisition-to-clinic browser journey.
 - Node.js type definitions (`@types/node`), MIT license.
   Used for TypeScript checking of server-side Node.js APIs.
 

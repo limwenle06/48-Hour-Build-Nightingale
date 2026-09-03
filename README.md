@@ -31,6 +31,7 @@ Follow [`docs/SUPABASE_SETUP.md`](docs/SUPABASE_SETUP.md) before using connected
 
 ```bash
 npm test
+npm run test:e2e
 npm run typecheck
 npm run build
 ```
@@ -39,6 +40,7 @@ If Windows PowerShell blocks `npm.ps1`, use:
 
 ```powershell
 npm.cmd test
+npm.cmd run test:e2e
 npm.cmd run typecheck
 npm.cmd run build
 ```

@@ -4,7 +4,7 @@ Target: 2 minutes 45 seconds. Use synthetic mock mode for the most reliable chal
 
 ## Before presenting
 
-1. Run `npm.cmd test`, `npm.cmd run typecheck`, and `npm.cmd run build`.
+1. Run `npm.cmd test`, `npm.cmd run typecheck`, and `npm.cmd run test:e2e`.
 2. Start with `npm.cmd run dev` and open <http://localhost:3000>.
 3. Keep `NEXT_PUBLIC_NIGHTINGALE_MOCK=true` unless the full Supabase setup has been verified.
 4. Reset demo data from the developer controls.

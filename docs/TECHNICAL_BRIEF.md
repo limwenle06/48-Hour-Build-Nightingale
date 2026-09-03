@@ -85,4 +85,4 @@ Future clinician communication should add append-only records linked by `escalat
 
 ## Verification status
 
-The repository has automated unit, integration, frontend, migration-structure, safety, and privacy tests, plus TypeScript and production-build checks. SQL migrations are versioned and statically tested. They must still be executed against the target Supabase PostgreSQL project and the connected journey must be manually exercised before claiming a live deployment.
+The repository has automated unit, integration, frontend, migration-structure, safety, privacy, and Playwright browser tests, plus TypeScript and production-build checks. SQL migrations are versioned and statically tested. They must still be executed against the target Supabase PostgreSQL project and the connected journey must be manually exercised before claiming a live deployment.
