@@ -41,6 +41,7 @@ describe("assessRisk", () => {
     ["worsening", "My symptoms are getting much worse.", "medium_risk_worsening_symptoms_001"],
     ["human request", "I want to speak with a nurse.", "medium_risk_human_review_request_001"],
     ["ambiguity", "Something feels very wrong.", "medium_risk_ambiguous_concern_001"],
+    ["unclear chest symptom", "My chest feels funny", "medium_risk_ambiguous_chest_001"],
   ])("classifies %s questions as medium risk", (_category, text, ruleId) => {
     const result = assessRisk({ ...baseInput, redacted_text: text });
 

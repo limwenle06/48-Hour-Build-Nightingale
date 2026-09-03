@@ -91,6 +91,20 @@ describe("Person 3 patient-message pipeline", () => {
     expect(provider.calls).toHaveLength(0);
   });
 
+  it("sends the frontend's unclear chest fixture to human review", async () => {
+    const provider = new FakeLlmProvider();
+    const result = await processPatientMessage(
+      buildInput("My chest feels funny"),
+      { provider },
+    );
+
+    expect(result.risk.risk_level).toBe("medium");
+    expect(result.risk.escalation_required).toBe(true);
+    expect(result.assistant_response?.response_kind).toBe("safety");
+    expect(result.escalation).not.toBeNull();
+    expect(provider.calls).toHaveLength(0);
+  });
+
   it("creates correction proposals with current-message provenance", async () => {
     const provider = new FakeLlmProvider(
       () => "A nurse or clinician can help review medication questions.",

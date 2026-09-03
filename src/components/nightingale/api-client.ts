@@ -1,6 +1,10 @@
 "use client";
 import { z } from "zod";
-import { syntheticGuestReplies, syntheticScenarioFor } from "./mock-scenarios";
+import {
+  syntheticGuestReplies,
+  syntheticGuestRiskFor,
+  syntheticScenarioFor,
+} from "./mock-scenarios";
 import type {
   Escalation,
   GuestReply,
@@ -15,6 +19,8 @@ import type {
 } from "./frontend-types";
 
 const MOCK = process.env.NEXT_PUBLIC_NIGHTINGALE_MOCK !== "false";
+const CLINIC_ID =
+  process.env.NEXT_PUBLIC_NIGHTINGALE_CLINIC_ID || "clinic_demo";
 const STORAGE_KEY = "nightingale_frontend_demo";
 const GUEST_VIEW_KEY = "nightingale_active_guest_view";
 const envelope = z.object({ data: z.unknown(), request_id: z.string() });
@@ -114,6 +120,7 @@ const scriptedFallbacks = [
 ];
 
 export const api = {
+  clinicId: CLINIC_ID,
   async createLead(input: {
     clinic_id: string;
     source_channel: SourceChannel;
@@ -129,6 +136,8 @@ export const api = {
         identity_level: string;
         opening_strategy: string;
         recovery_expires_at: string;
+        recovered_messages: Message[];
+        active_guest_risk_level: RiskAssessment["risk_level"] | null;
       }>("/api/lead-sessions", { method: "POST", body: JSON.stringify(input) });
     const state = getState();
     state.lead_session_id ||= id("lead");
@@ -153,6 +162,19 @@ export const api = {
               ? "neutral_clinic_help"
               : "campaign_context",
       recovery_expires_at: new Date(Date.now() + 604800000).toISOString(),
+      recovered_messages: state.guest_messages,
+      active_guest_risk_level: state.guest_messages
+        .filter((item) => item.sender_type === "guest")
+        .map((item) => syntheticGuestRiskFor(item.content))
+        .reduce<RiskAssessment["risk_level"] | null>(
+          (active, risk) =>
+            active === "high" || risk === "high"
+              ? "high"
+              : active === "medium" || risk === "medium"
+                ? "medium"
+                : "low",
+          null,
+        ),
     };
   },
   async sendGuest(
@@ -169,10 +191,17 @@ export const api = {
     const guestCount = state.guest_messages.filter(
       (item) => item.sender_type === "guest",
     ).length;
+    const riskLevel = syntheticGuestRiskFor(content);
     const reply = message(
       "ai",
-      syntheticGuestReplies[content.trim().toLowerCase()] ||
-        scriptedFallbacks[Math.min(guestCount, scriptedFallbacks.length - 1)],
+      riskLevel === "high"
+        ? "Your message may describe an emergency. Call 999 now or go to the nearest emergency department. Do not wait for Nightingale or the clinic."
+        : riskLevel === "medium"
+          ? "This needs judgement from a nurse or clinician. Nightingale AI will not diagnose it or recommend treatment."
+          : syntheticGuestReplies[content.trim().toLowerCase()] ||
+            scriptedFallbacks[
+              Math.min(guestCount, scriptedFallbacks.length - 1)
+            ],
       "lead",
       lead_session_id,
     );
@@ -182,6 +211,7 @@ export const api = {
       guest_message: guest,
       assistant_message: reply,
       value_event: { event_name: "value_event" },
+      risk_level: riskLevel,
       trust_transition_available: true,
     };
   },
@@ -196,6 +226,29 @@ export const api = {
       });
     return { funnel_event_id: id("event") };
   },
+  async authenticatePatient(input: {
+    action: "sign_up" | "sign_in";
+    clinic_id: string;
+    email: string;
+    password: string;
+    phone: string | null;
+  }): Promise<{
+    authenticated: boolean;
+    verification_required: boolean;
+    patient: { patient_id: string } | null;
+  }> {
+    if (!MOCK)
+      return request("/api/auth/session", {
+        method: "POST",
+        body: JSON.stringify(input),
+      });
+
+    return {
+      authenticated: true,
+      verification_required: false,
+      patient: { patient_id: getState().patient_id },
+    };
+  },
   async consentAndConvert(lead_session_id: string): Promise<{
     patient: { patient_id: string };
     patient_session: { patient_session_id: string };
@@ -208,7 +261,7 @@ export const api = {
         {
           method: "POST",
           body: JSON.stringify({
-            clinic_id: "clinic_demo",
+            clinic_id: CLINIC_ID,
             consent_type: "health_data_sharing",
             status: "granted",
             policy_version: "0.1.0",

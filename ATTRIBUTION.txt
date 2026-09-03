@@ -6,6 +6,8 @@ CURRENT IMPLEMENTATION DEPENDENCIES
   Used for the web application and server API routes.
 - React and React DOM (`react`, `react-dom`), MIT license.
   Used for the patient and staff user interfaces.
+- Supabase JavaScript and SSR clients (`@supabase/supabase-js`, `@supabase/ssr`), MIT license.
+  Used for verified authentication, secure server sessions, and PostgreSQL access.
 - OpenAI JavaScript/TypeScript SDK (`openai`), Apache-2.0 license.
   Used for the server-side provider adapter. No OpenAI code or key is exposed to the browser.
 - Zod (`zod`), MIT license.

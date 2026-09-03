@@ -1,8 +1,8 @@
 # Nightingale Team Contract
 
-**Contract version:** 0.1.0  
+**Contract version:** 0.3.0  
 **Status:** Active prototype contract  
-**Last updated:** 2026-09-01  
+**Last updated:** 2026-09-03  
 **Applies to:** Frontend, backend, database, AI/safety, analytics, and tests
 
 This document is the single source of truth for shared Nightingale names, schemas, enums, API boundaries, safety order, and ownership. It is intentionally small enough for a 48-hour prototype. Internal implementation may vary, but code crossing a team boundary MUST follow this contract.
@@ -811,6 +811,25 @@ HTTP mapping: validation `400`, unauthenticated `401`, forbidden/consent `403`, 
 
 ### 14.2 Endpoint contracts
 
+#### `POST /api/auth/session`
+
+Auth: public. Signs up or signs in a patient through the configured authentication provider. A verified session creates or reuses the clinic-scoped patient identity shell; an unverified signup returns a verification-required state and does not grant protected access. Passwords MUST NOT be logged or stored by Nightingale application tables.
+
+```ts
+type Request = {
+  action: "sign_up" | "sign_in";
+  clinic_id: string;
+  email: string;
+  password: string;
+  phone?: string | null;
+};
+type Response = ApiSuccess<{
+  authenticated: boolean;
+  verification_required: boolean;
+  patient: Patient | null;
+}>;
+```
+
 #### `POST /api/lead-sessions`
 
 Auth: public. Creates or recovers a LeadSession and records `visitor`.
@@ -831,6 +850,8 @@ type Response = ApiSuccess<{
   identity_level: IdentityLevel;
   opening_strategy: string;
   recovery_expires_at: string;
+  recovered_messages: Message[];
+  active_guest_risk_level: RiskLevel | null; // highest recovered guest safety state
 }>;
 ```
 
@@ -846,6 +867,7 @@ type Response = ApiSuccess<{
   guest_message: Message;
   assistant_message: Message;
   value_event: FunnelEvent | null;
+  risk_level: RiskLevel;
   trust_transition_available: boolean;
 }>;
 ```
@@ -1121,4 +1143,6 @@ During the 48-hour build, approval in the team chat is sufficient. No developer 
 
 | Version | Date | Decision |
 |---|---|---|
+| 0.3.0 | 2026-09-03 | Added recoverable guest messages and guest safety state to the lead/guest API responses so refresh recovery and pre-authentication emergency UI are explicit. |
+| 0.2.0 | 2026-09-03 | Added the patient authentication-session API boundary and aligned API error vocabulary with implemented authentication flows. |
 | 0.1.0 | 2026-09-01 | Initial prototype contract: modular monolith, shared entities/enums, API boundary, safety order, provenance, RBAC, and failure behavior. |

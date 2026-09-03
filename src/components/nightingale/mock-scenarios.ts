@@ -289,6 +289,22 @@ export const syntheticScenarioFor = (input: string) =>
     (scenario) => scenario.input.toLowerCase() === input.trim().toLowerCase(),
   );
 
+export function syntheticGuestRiskFor(input: string): RiskLevel {
+  const scenario = syntheticScenarioFor(input);
+  if (scenario) return scenario.risk_level;
+
+  if (
+    /\b(?:severe\s+)?chest\s+(?:pain|pressure|tightness)\b/i.test(input) ||
+    /\b(?:cannot|can't|unable\s+to)\s+breathe\b/i.test(input) ||
+    /\b(?:heavy|severe|uncontrolled)\s+bleeding\b/i.test(input) ||
+    /\b(?:kill|hurt|harm)\s+(?:myself|me)\b/i.test(input)
+  ) {
+    return "high";
+  }
+
+  return "low";
+}
+
 export const syntheticGuestReplies: Record<string, string> = {
   "are you a real doctor?":
     "No. I’m Nightingale AI, not a doctor. I help collect concerns and provide general information for Demo Women’s Clinic. A nurse or clinician becomes involved when human judgment or safety review is needed.",

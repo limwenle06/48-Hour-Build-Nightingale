@@ -2,14 +2,20 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "./api-client";
-import type { Message } from "./frontend-types";
+import type { Message, RiskLevel } from "./frontend-types";
 import {
   canonicalSourceChannel,
   canonicalSourcePlatform,
   openingCopy,
 } from "@/config/channel-openings";
 import { guestStarterPrompts } from "@/config/starter-prompts";
-import { ChatThread, EmergencyWarning, InlineError, JourneySteps } from "./ui";
+import {
+  ChatThread,
+  EmergencyWarning,
+  InlineError,
+  JourneySteps,
+  SafetyAction,
+} from "./ui";
 
 export function GuestJourney() {
   const params = useSearchParams(),
@@ -24,13 +30,15 @@ export function GuestJourney() {
     [text, setText] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null),
+    [notice, setNotice] = useState<string | null>(null),
     [ready, setReady] = useState(false),
-    [consentOpen, setConsentOpen] = useState(false);
+    [consentOpen, setConsentOpen] = useState(false),
+    [guestRisk, setGuestRisk] = useState<RiskLevel | null>(null);
   const [authMode, setAuthMode] = useState<"signup" | "login">("signup");
   const clinic = "Demo Women’s Clinic";
   const acquisition = useMemo(
     () => ({
-      clinic_id: "clinic_demo",
+      clinic_id: api.clinicId,
       source_channel,
       source_platform,
       campaign_id: params.get("campaign_id") || undefined,
@@ -50,8 +58,22 @@ export function GuestJourney() {
           if (api.mockMode) {
             const recovered = api.openMockGuestView();
             setMessages(recovered);
+            const latestGuest = [...recovered]
+              .reverse()
+              .find((message) => message.sender_type === "guest");
+            setGuestRisk(
+              latestGuest ? result.active_guest_risk_level : null,
+            );
             setReady(
               recovered.some((message) => message.sender_type === "guest"),
+            );
+          } else {
+            setMessages(result.recovered_messages);
+            setGuestRisk(result.active_guest_risk_level);
+            setReady(
+              result.recovered_messages.some(
+                (message) => message.sender_type === "guest",
+              ),
             );
           }
           const base =
@@ -78,6 +100,13 @@ export function GuestJourney() {
     try {
       const reply = await api.sendGuest(leadId, content);
       setMessages((m) => [...m, reply.guest_message, reply.assistant_message]);
+      setGuestRisk((active) =>
+        active === "high" || reply.risk_level === "high"
+          ? "high"
+          : active === "medium" || reply.risk_level === "medium"
+            ? "medium"
+            : "low",
+      );
       setReady(reply.trust_transition_available);
     } catch (e) {
       setText(content);
@@ -100,7 +129,24 @@ export function GuestJourney() {
     if (!leadId) return;
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
+      const form = new FormData(e.currentTarget);
+      const authentication = await api.authenticatePatient({
+        action: authMode === "signup" ? "sign_up" : "sign_in",
+        clinic_id: api.clinicId,
+        email: String(form.get("email") || ""),
+        password: String(form.get("password") || ""),
+        phone: String(form.get("phone") || "").trim() || null,
+      });
+
+      if (authentication.verification_required) {
+        setNotice(
+          "Check your email to verify your account, then choose Log in to continue.",
+        );
+        return;
+      }
+
       const result = await api.consentAndConvert(leadId);
       router.push(
         `/patient?patient_session_id=${encodeURIComponent(result.patient_session.patient_session_id)}`,
@@ -140,6 +186,9 @@ export function GuestJourney() {
               </div>
             }
           />
+          {guestRisk && guestRisk !== "low" && (
+            <SafetyAction risk={guestRisk} />
+          )}
           {!messages.length && (
             <div className="border-t border-line bg-white px-4 py-4">
               <p className="mb-3 font-bold">What’s bothering you?</p>
@@ -261,16 +310,36 @@ export function GuestJourney() {
                 <input
                   required
                   type="email"
-                  defaultValue="patient@example.test"
+                  name="email"
+                  autoComplete="email"
+                  defaultValue={api.mockMode ? "patient@example.test" : ""}
                   className="focus-ring mt-1 block w-full rounded-xl border border-line px-3 py-2 font-normal"
                 />
               </label>
+              {authMode === "signup" && (
+                <label className="text-sm font-semibold">
+                  Phone
+                  <input
+                    required
+                    type="tel"
+                    name="phone"
+                    autoComplete="tel"
+                    defaultValue={api.mockMode ? "+60112223333" : ""}
+                    className="focus-ring mt-1 block w-full rounded-xl border border-line px-3 py-2 font-normal"
+                  />
+                </label>
+              )}
               <label className="text-sm font-semibold">
-                Phone
+                Password
                 <input
                   required
-                  type="tel"
-                  defaultValue="+60112223333"
+                  type="password"
+                  name="password"
+                  minLength={8}
+                  autoComplete={
+                    authMode === "signup" ? "new-password" : "current-password"
+                  }
+                  defaultValue={api.mockMode ? "synthetic-demo" : ""}
                   className="focus-ring mt-1 block w-full rounded-xl border border-line px-3 py-2 font-normal"
                 />
               </label>
@@ -287,6 +356,11 @@ export function GuestJourney() {
             >
               {busy ? "Continuing…" : "Continue"}
             </button>
+            {notice && (
+              <p className="mt-3 rounded-xl bg-sky-50 p-3 text-sm text-slate-700">
+                {notice}
+              </p>
+            )}
             {api.mockMode && (
               <p className="mt-3 text-xs text-slate-500">
                 Developer demo: verification and consent are simulated.

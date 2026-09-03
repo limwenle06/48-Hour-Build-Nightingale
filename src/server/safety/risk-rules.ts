@@ -115,6 +115,14 @@ export const HIGH_RISK_RULES: readonly DeterministicRiskRule[] = [
 
 export const MEDIUM_RISK_RULES: readonly DeterministicRiskRule[] = [
   {
+    rule_id: "medium_risk_ambiguous_chest_001",
+    risk_level: "medium",
+    reason: "An unclear chest symptom needs clinical review.",
+    patterns: [
+      /\bchest\s+(?:feels?|is)\s+(?:funny|strange|weird|odd|unusual|not\s+right)\b/i,
+    ],
+  },
+  {
     rule_id: "medium_risk_diagnosis_request_001",
     risk_level: "medium",
     reason: "The patient requested diagnosis or clinical interpretation.",

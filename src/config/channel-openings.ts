@@ -101,3 +101,42 @@ export function canonicalSourcePlatform(value: string | null): SourcePlatform {
     ? (value as SourcePlatform)
     : "website";
 }
+
+export function clinicTimeOfDay(
+  at: Date,
+  timeZone: string,
+): TimeOfDay {
+  try {
+    const hour = Number(
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone,
+        hour: "2-digit",
+        hourCycle: "h23",
+      }).format(at),
+    );
+    return hour >= 8 && hour < 18 ? "business_hours" : "after_hours";
+  } catch {
+    return "after_hours";
+  }
+}
+
+export function openingStrategyFor(
+  sourceChannel: SourceChannel,
+  identityLevel: IdentityLevel,
+  at: Date,
+  timeZone: string,
+) {
+  const timeOfDay = clinicTimeOfDay(at, timeZone);
+  const exact = channelOpeningRules.find(
+    (rule) =>
+      rule.source_channel === sourceChannel &&
+      rule.identity_level === identityLevel &&
+      rule.time_of_day === timeOfDay,
+  );
+  const channelFallback = channelOpeningRules.find(
+    (rule) =>
+      rule.source_channel === sourceChannel && rule.time_of_day === timeOfDay,
+  );
+
+  return (exact ?? channelFallback)?.opening_strategy ?? "neutral_clinic_help";
+}

@@ -4,7 +4,7 @@ Nightingale is a 48-hour healthcare software prototype for turning a first clini
 
 `Acquisition → LeadSession → guest value → trust transition → authentication + consent → PatientSession → Living Profile → risk gate → clinician escalation`
 
-The repository currently combines the tested Person 1 frontend with the tested Person 3 AI and safety module. Person 2 backend persistence, authentication, authorization, and API integration are the remaining implementation work.
+The repository currently combines the tested Person 1 frontend, Person 3 AI/safety module, secure Supabase schema, patient authentication/consent/conversion, and the recoverable guest-session backend. Patient-message persistence and the staff backend remain to be integrated.
 
 All names, schemas, API boundaries, ownership rules, and safety requirements are defined in [`TEAM_CONTRACT.md`](TEAM_CONTRACT.md).
 
@@ -86,7 +86,7 @@ The backend entry point is `src/server/ai/process-patient-message.ts`. Person 2 
 4. Use the synthetic symptom, medication correction, human-review, and emergency examples.
 5. Open the staff dashboard to show warm leads, escalations, funnel data, and a staff referral link.
 
-Mock behaviour is only for demonstrating the interface. Real storage, login, consent, clinic isolation, and staff access depend on the Person 2 backend.
+Mock behaviour is only for demonstrating the interface. Connected LeadSession recovery, guest messages, login, consent, and conversion now use the Person 2 server boundaries. Patient-message persistence, clinic staff access, and live metrics are still incomplete.
 
 ## Repository map
 
@@ -99,6 +99,10 @@ src/server/ai/                   Safe response orchestration
 src/server/safety/               PHI redaction and deterministic risk rules
 src/server/memory/               Living Memory extraction and mutation
 src/server/escalation/           Clinician escalation summary generation
+src/server/guest/                Guest validation and deterministic safety
+src/server/data/                 Runtime-validated Supabase persistence
+src/app/api/                     Next.js server API routes
+supabase/migrations/             Versioned transactional database changes
 tests/unit/frontend/             Person 1 frontend tests
 tests/unit/ai-safety/            Person 3 module tests
 tests/integration/               Person 3 processing-flow tests

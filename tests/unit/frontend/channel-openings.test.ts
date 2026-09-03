@@ -3,6 +3,8 @@ import {
   canonicalSourceChannel,
   canonicalSourcePlatform,
   channelOpeningRules,
+  clinicTimeOfDay,
+  openingStrategyFor,
   openingCopy,
 } from "@/config/channel-openings";
 describe("channel openings", () => {
@@ -26,5 +28,21 @@ describe("channel openings", () => {
     expect(canonicalSourceChannel("instagram_comment")).toBe("website_widget");
     expect(canonicalSourcePlatform("tiktok")).toBe("tiktok");
     expect(canonicalSourcePlatform("unknown-platform")).toBe("website");
+  });
+  it("uses the clinic timezone and declarative matrix", () => {
+    expect(
+      clinicTimeOfDay(new Date("2026-09-03T02:00:00.000Z"), "Asia/Kuala_Lumpur"),
+    ).toBe("business_hours");
+    expect(
+      clinicTimeOfDay(new Date("2026-09-03T20:00:00.000Z"), "Asia/Kuala_Lumpur"),
+    ).toBe("after_hours");
+    expect(
+      openingStrategyFor(
+        "social_comment",
+        "anonymous",
+        new Date("2026-09-03T02:00:00.000Z"),
+        "Asia/Kuala_Lumpur",
+      ),
+    ).toBe("social_private_question");
   });
 });

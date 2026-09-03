@@ -1,1 +1,46 @@
-const CACHE="nightingale-shell-v1";self.addEventListener("install",event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(["/","/start","/manifest.webmanifest"]))));self.addEventListener("fetch",event=>{if(event.request.method!=="GET")return;event.respondWith(fetch(event.request).then(response=>{const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(event.request,copy));return response}).catch(()=>caches.match(event.request)))})
+const CACHE = "nightingale-public-shell-v2";
+const PUBLIC_SHELL_PATHS = new Set(["/", "/start", "/manifest.webmanifest"]);
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll([...PUBLIC_SHELL_PATHS])));
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)))),
+  );
+});
+
+self.addEventListener("fetch", (event) => {
+  const requestUrl = new URL(event.request.url);
+  const isPublicShell =
+    requestUrl.search === "" && PUBLIC_SHELL_PATHS.has(requestUrl.pathname);
+  const isPublicStaticAsset = requestUrl.pathname.startsWith("/_next/static/");
+
+  if (
+    event.request.method !== "GET" ||
+    requestUrl.origin !== self.location.origin ||
+    requestUrl.pathname.startsWith("/api/") ||
+    requestUrl.pathname.startsWith("/patient") ||
+    requestUrl.pathname.startsWith("/staff") ||
+    (!isPublicShell && !isPublicStaticAsset)
+  ) {
+    return;
+  }
+
+  event.respondWith(
+    caches.match(event.request).then(
+      (cached) =>
+        cached ||
+        fetch(event.request).then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            void caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+          }
+          return response;
+        }),
+    ),
+  );
+});

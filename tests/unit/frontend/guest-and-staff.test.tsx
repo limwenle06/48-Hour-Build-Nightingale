@@ -36,6 +36,29 @@ describe("guest and clinic product journey", () => {
       screen.getByText("Continue without repeating yourself."),
     ).toBeVisible();
   });
+  it("makes emergency services primary before guest signup", async () => {
+    const user = userEvent.setup();
+    render(<GuestJourney />);
+    await screen.findByRole("button", { name: "I have a private question." });
+    await user.type(
+      screen.getByLabelText("Your question"),
+      "I have severe chest pain",
+    );
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(
+      await screen.findByRole("link", { name: "Call 999 now" }),
+    ).toHaveAttribute("href", "tel:999");
+    expect(
+      screen.getAllByText(/Do not wait for Nightingale or the clinic/),
+    ).toHaveLength(2);
+
+    await user.type(screen.getByLabelText("Your question"), "Okay");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(
+      await screen.findByRole("link", { name: "Call 999 now" }),
+    ).toBeVisible();
+  });
   it("does not expose prior secure-session history in a fresh guest view", async () => {
     const { api } = await import("@/components/nightingale/api-client");
     const lead = await api.createLead({

@@ -81,6 +81,7 @@ export interface GuestReply {
   guest_message: Message;
   assistant_message: Message;
   value_event: unknown | null;
+  risk_level: RiskLevel;
   trust_transition_available: boolean;
 }
 export interface PatientReply {
